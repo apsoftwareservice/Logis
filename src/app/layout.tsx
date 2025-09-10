@@ -4,6 +4,7 @@ import './globals.css';
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { DashboardProvider } from '@/context/DashboardContext'
+import { Bounce, Slide, ToastContainer } from 'react-toastify'
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -24,6 +25,21 @@ export default function RootLayout({
             </DashboardProvider>
           </SidebarProvider>
         </ThemeProvider>
+        <ToastContainer
+          position="top-center"
+          limit={10}
+          autoClose={4300}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick={false}
+          rtl={true}
+          pauseOnFocusLoss
+          draggable
+          stacked
+          pauseOnHover
+          theme="light"
+          transition={Slide}
+        />
       </body>
     </html>
   );

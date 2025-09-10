@@ -1,7 +1,3 @@
-// value = what onSeek returns
-// startTime/endTime are epoch ms
-import { LogEvent } from '@/parsers/engine'
-
 export function seekValueToEpochMs(value: number, startTime: number, endTime: number) {
   const durationMs = endTime - startTime;
 
@@ -20,20 +16,4 @@ export function seekValueToEpochMs(value: number, startTime: number, endTime: nu
   }
   // already an absolute epoch ms
   return value;
-}
-
-export function parseWinston(lines: {
-  level: string
-  message: string
-  timestamp: string
-  payload: any
-}[]): LogEvent[] {
-  // assume lines already sorted by time
-  return lines.map(line => {
-    return {
-      timestampMs: new Date(line.timestamp).valueOf(),
-      type: line.message,
-      payload: line.payload
-    }
-  })
 }

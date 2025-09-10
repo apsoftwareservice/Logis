@@ -14,7 +14,7 @@ export class TimelineEngine {
 // --- Core types --------------------------------------------------------------
 
 export type LogEvent<TPayload = unknown> = {
-  timestamp: number;      // epoch ms, sorted ascending across input
+  date: string;      // epoch ms, sorted ascending across input
   message: string;             // e.g., "Order Placed"
   payload?: TPayload;       // arbitrary data
 };
@@ -27,7 +27,7 @@ export type EventPoint<TPayload = unknown> = {
 // --- EventBucket: one type's events (sorted; in-order appends) --------------
 
 export class EventBucket<TPayload = unknown> {
-  private timestampsMs: Float64Array;
+  readonly timestampsMs: Float64Array;
   private payloads: (TPayload | undefined)[];
   private length: number;           // logical size (<= capacity)
 
@@ -147,7 +147,7 @@ export class EventTypeIndex<TPayload = unknown> {
         bucket = EventBucket.empty<TPayload>();
         index.bucketsByType.set(event.message, bucket);
       }
-      bucket.appendSorted({ timestampMs: new Date(event.timestamp).valueOf(), payload: event.payload });
+      bucket.appendSorted({ timestampMs: new Date(event.date).valueOf(), payload: event.payload });
     }
     return index;
   }
@@ -159,7 +159,7 @@ export class EventTypeIndex<TPayload = unknown> {
       bucket = EventBucket.empty<TPayload>();
       this.bucketsByType.set(event.message, bucket);
     }
-    bucket.appendSorted({ timestampMs: new Date(event.timestamp).valueOf(), payload: event.payload });
+    bucket.appendSorted({ timestampMs: new Date(event.date).valueOf(), payload: event.payload });
   }
 
   /** Retrieve a bucket; undefined if type not present. */

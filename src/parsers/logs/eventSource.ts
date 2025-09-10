@@ -1,5 +1,6 @@
 import type { InputSource, OnEvents } from "@/parsers/logs/InputSource";
 import type { LogEvent } from "@/parsers/engine";
+import { toast } from 'react-toastify'
 
 /**
  * An EventSource-based stream that expects the server to send JSON events.
@@ -17,11 +18,11 @@ export function createEventSourceInput(url: string): InputSource {
           if (Array.isArray(payload)) onEvents(payload);
           else onEvents([payload]);
         } catch (err) {
-          console.warn("EventSource JSON parse error", err);
+          toast.warn(`EventSource JSON parse error ${err}`);
         }
       };
       es.onerror = (err) => {
-        console.error("EventSource error", err);
+        toast.error(`EventSource error ${err}`);
         // Optionally call onEvents([]) or emit an error event through another channel
       };
     },

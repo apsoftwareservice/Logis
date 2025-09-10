@@ -12,22 +12,15 @@ export interface TimelineProps {
 
 export function Timeline({  }: TimelineProps) {
   const [ time, setTime ] = useState<number>()
-  const {setCurrentTimestamp, timeframe} = useDashboard()
+  const {setCurrentTimestamp, timeframe, clips, markers} = useDashboard()
 
-  const clips: Clip[] = [
+  // const clips: Clip[] = [
     // { id: "A", start: 0, end: 22.5, track: 0, label: "Intro", color: "#fde68a" },
     // { id: "B", start: 10, end: 42, track: 1, label: "Interview", color: "#bbf7d0" },
     // { id: "C", start: 44, end: 70, track: 0, label: "B-Roll", color: "#bfdbfe" },
     // { id: "D", start: 80, end: 110, track: 1, label: "Overlay", color: "#fecaca" },
-  ]
-
-  const markers: Marker[] = [ {
-    id: '1',
-    time: timeframe.start + 1000000,
-    color: 'red',
-  }
-  ]
-
+  // ]
+  
   return (
     <div className="p-4 bg-gradient-to-t from-gray-800 to-gray-800/0">
       <TimelineSlider
