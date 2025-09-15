@@ -13,6 +13,9 @@ import {
   formatTickLabel,
   snapTsToUnit
 } from "./Timeline.utils"
+import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
+import { MarkObj } from 'rc-slider/es/Marks'
+import { PanelBottomClose, PanelBottomOpen } from 'lucide-react'
 
 /**
  * TimelineSlider — a movie-editor style time slider with zoom, pan, and markers.
@@ -68,7 +71,7 @@ export default function TimelineSlider({
   const secondsToTimestamp = (sec: number) => startDate + sec * 1000   // seconds from start -> epoch ms
 
   const currentSecond = useMemo(() => timestampToSeconds(currentTime), [ currentTime, startDate ])
-
+  const [ isShowingFullSlider, setIsShowingFullSlider ] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [ isPlaying, setIsPlaying ] = useState(false)
   const rafRef = useRef<number | null>(null)
@@ -93,8 +96,8 @@ export default function TimelineSlider({
   useEffect(() => {
     const d = Math.max(0, duration)
     // Reset the window to the beginning of the new range, clamped to the configured maxWindow.
-    setWin({ start: 0, end: Math.min(d, maxWindow) })
-  }, [duration, maxWindow])
+    setWin({start: 0, end: Math.min(d, maxWindow)})
+  }, [ duration, maxWindow ])
 
   const currentUnit: TimeUnit = useMemo(() => chooseUnit(windowLen), [ windowLen ])
 
@@ -210,6 +213,11 @@ export default function TimelineSlider({
     return out
   }, [ win.start, win.end, windowLen, currentUnit ])
 
+  const visibleMarkers = markers.filter(m => {
+    const s = timestampToSeconds(m.time)
+    return s >= win.start && s <= win.end
+  })
+  const pct = useCallback((t: number) => 100 * (clamp(t, win.start, win.end) - win.start) / windowLen, [ win.start, win.end, windowLen ])
   // Slider marks (rc-slider supports a marks object). We'll place only at window edges for perf,
   // and render our richer ruler above the rail.
   const sliderProps = {
@@ -232,16 +240,22 @@ export default function TimelineSlider({
       // boxShadow: "0 0 0 3px rgba(16,185,129,0.25)",
     },
     dotStyle: {display: "none"},
-    ariaLabelForHandle: "Playhead"
-  } as const
+    ariaLabelForHandle: "Playhead",
+    marks: visibleMarkers.reduce((acc, marker) => {
+      const key = timestampToSeconds(marker.time)
+      //@ts-expect-error
+      acc[key] = {
+        style: {color: marker.color ?? "orange"},
+        label: <TooltipWrapper key={ marker.id } content={ marker.label } side={ "bottom" } className={ 'text-black' }>
+          <div className="w-0 h-0 border-l-5 border-r-5 border-b-8 border-l-transparent border-r-transparent"
+               style={ {borderBottomColor: marker.color ?? "#f59e0b"} }/>
+        </TooltipWrapper>
+      }
+      return acc
+    }, {} as MarkObj)
+  } //as SliderProps
 
   // Helper to convert absolute seconds to percentage within the visible window
-  const pct = useCallback((t: number) => 100 * (clamp(t, win.start, win.end) - win.start) / windowLen, [ win.start, win.end, windowLen ])
-
-  const visibleMarkers = markers.filter(m => {
-    const s = timestampToSeconds(m.time)
-    return s >= win.start && s <= win.end
-  })
   const visibleClips = clips.filter(c => {
     const s = timestampToSeconds(c.start)
     const e = timestampToSeconds(c.end)
@@ -262,7 +276,7 @@ export default function TimelineSlider({
       <div className="flex items-center justify-between mb-2 text-sm text-white">
         <div>
           <button
-            className="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"
             onClick={ () => {
               if (isPlaying) {
                 setIsPlaying(false)
@@ -292,8 +306,10 @@ export default function TimelineSlider({
             className="px-2 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700"
             onClick={ () => {
               const nextLen = clamp(windowLen * 0.7, minWindowSec, Math.min(maxWindow, duration))
-              const center = win.start + windowLen / 2
-              const start = clamp(center - nextLen / 2, 0, Math.max(0, duration - nextLen))
+              // Focus the zoom on the current handle (playhead) position within the visible window
+              const focusT = clamp(currentSecond, win.start, win.end)
+              const frac = windowLen > 0 ? (focusT - win.start) / windowLen : 0.5
+              const start = clamp(focusT - frac * nextLen, 0, Math.max(0, duration - nextLen))
               setWin({start, end: start + nextLen})
             } }
             aria-label="Zoom in"
@@ -315,6 +331,17 @@ export default function TimelineSlider({
             onClick={ () => setWin({start: 0, end: Math.min(duration, maxWindow)}) }
             aria-label="Reset view"
           >Reset
+          </button>
+          <button
+            className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"
+            onClick={ () => setIsShowingFullSlider(!isShowingFullSlider) }
+            aria-label="Reset view"
+          >
+            { isShowingFullSlider ? (
+              <PanelBottomClose width={ 18 } height={ 18 }/>
+            ) : (
+              <PanelBottomOpen width={ 18 } height={ 18 }/>
+            ) }
           </button>
         </div>
       </div>
@@ -370,33 +397,18 @@ export default function TimelineSlider({
           </div>
         ) }
 
-
         {/* Slider (playhead) */ }
         <div className="relative">
           <div className={ 'flex flex-col gap-2' }>
             {/*@ts-ignore*/ }
             <Slider { ...sliderProps } />
-            <div className={ 'flex justify-between' }>
-              <div className="text-sm">{ formatBoundaryLabel(currentTime, endDate) }</div>
-              <div className="text-sm">{ formatBoundaryLabel(endDate, currentTime) }</div>
-            </div>
+            { isShowingFullSlider && (
+              <div className={ 'flex justify-between mt-5' }>
+                <div className="text-sm">{ formatBoundaryLabel(currentTime, endDate) }</div>
+                <div className="text-sm">{ formatBoundaryLabel(endDate, currentTime) }</div>
+              </div>
+            ) }
           </div>
-          {/* Markers overlay */ }
-          { visibleMarkers.map(m => (
-            <div
-              key={ m.id }
-              className="absolute top-1/2 -translate-y-1/5"
-              style={ {left: `${ pct(timestampToSeconds(m.time)) }%`} }
-            >
-              <div className="w-0 h-0 border-l-5 border-r-5 border-b-8 border-l-transparent border-r-transparent"
-                   style={ {borderBottomColor: m.color ?? "#f59e0b"} }/>
-              { m.label && (
-                <div className="text-[10px] text-slate-600 text-center mt-1 font-medium">
-                  { m.label }
-                </div>
-              ) }
-            </div>
-          )) }
         </div>
       </div>
     </div>

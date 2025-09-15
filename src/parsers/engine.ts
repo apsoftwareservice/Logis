@@ -7,7 +7,14 @@ export type Observer = {
 export class TimelineEngine {
   private observers: Observer[] = [];
   constructor(private index: EventTypeIndex) {}
-  register(observer: Observer) { this.observers.push(observer); }
+  register(observer: Observer) {
+    const idx = this.observers.findIndex(o => o.id === observer.id);
+    if (idx >= 0) {
+      this.observers[idx] = observer;
+    } else {
+      this.observers.push(observer);
+    }
+  }
   moveTo(tMs: number) { for (const o of this.observers) o.renderAt(tMs); }
 }
 
@@ -27,7 +34,7 @@ export type EventPoint<TPayload = unknown> = {
 // --- EventBucket: one type's events (sorted; in-order appends) --------------
 
 export class EventBucket<TPayload = unknown> {
-  readonly timestampsMs: Float64Array;
+  timestampsMs: Float64Array;
   private payloads: (TPayload | undefined)[];
   private length: number;           // logical size (<= capacity)
 
@@ -93,6 +100,11 @@ export class EventBucket<TPayload = unknown> {
     const index = this.upperBound(timeMs) - 1;
     if (index < 0) return undefined;
     return { timestampMs: this.timestampsMs[index], payload: this.payloads[index] };
+  }
+
+  /** Get first payload. */
+  first(): TPayload | undefined {
+    return this.payloads?.[0];
   }
 
   /** Logical size (number of events). */

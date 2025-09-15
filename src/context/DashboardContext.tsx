@@ -7,6 +7,8 @@ import { createFullJsonFileSource } from '@/parsers/logs/fullJson'
 import { createNdjsonFileSource } from '@/parsers/logs/ndjson'
 import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeRange/TimeLine.types'
+import { DashboardContainer } from '@/types/containers'
+import { Layout } from 'react-grid-layout'
 
 type DashboardContextType = {
   logIndex?: EventTypeIndex<unknown>
@@ -14,8 +16,14 @@ type DashboardContextType = {
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
 
+  lockGrid: boolean
+  setLockGrid: React.Dispatch<React.SetStateAction<boolean>>
+
   markers: Marker[]
   setMarkers: React.Dispatch<React.SetStateAction<Marker[]>>
+
+  containers: DashboardContainer[]
+  setContainers: React.Dispatch<React.SetStateAction<DashboardContainer[]>>
 
   currentTimestamp: number
   setCurrentTimestamp: React.Dispatch<React.SetStateAction<number>>
@@ -24,6 +32,8 @@ type DashboardContextType = {
   parseLogFile: (file: File) => Promise<void>
 
   handleOnSearch: (value: string) => void
+  onTitleChange: (container: DashboardContainer, title: string) => void
+  updateContainerSize: (layout: Layout) => void
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -38,6 +48,8 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
+  const [containers, setContainers] = useState<DashboardContainer[]>([])
+  const [lockGrid, setLockGrid] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
   const [ clips, setClips ] = useState<Clip[]>([])
   const [ markers, setMarkers ] = useState<Marker[]>([])
@@ -134,10 +146,53 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         return {
           id: crypto.randomUUID(),
           time: timestamp,
-          color: 'red'
+          color: 'red',
+          label: value
         } as Marker
       }))
     }
+  }
+
+  function onTitleChange(container: DashboardContainer, title: string) {
+    setContainers(containers => containers.map(_container => {
+      if (_container.id === container.id) {
+        return {
+          ..._container,
+          title
+        }
+      }
+      return _container
+    }))
+  }
+
+  function updateContainerSize(layout: Layout) {
+    setContainers(containers => containers.map(_container => {
+      if (_container.id === layout.i) {
+        return {
+          ..._container,
+          gridLayout: {
+            ..._container.gridLayout,
+            x: layout.x,
+            y: layout.y,
+            w: layout.w,
+            h: layout.h
+          }
+        }
+      }
+      return _container
+    }))
+  }
+
+  function updateContainerPosition(container: DashboardContainer, title: string) {
+    setContainers(containers => containers.map(_container => {
+      if (_container.id === container.id) {
+        return {
+          ..._container,
+          title
+        }
+      }
+      return _container
+    }))
   }
 
   return (
@@ -153,7 +208,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         clips,
         markers,
         setClips,
-        setMarkers
+        setMarkers,
+        containers,
+        setContainers,
+        lockGrid,
+        setLockGrid,
+        onTitleChange,
+        updateContainerSize
       } }
     >
       { children }

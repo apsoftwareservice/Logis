@@ -1,44 +1,66 @@
+"use client"
+
 import React from "react"
-import RecentOrders from "@/components/dashboard/RecentOrders"
+import TableView from "@/components/dashboard/table/TableView"
 import { Timeline } from '@/components/timeRange/Timeline'
-import { Metadata } from 'next'
+import GraphView from '@/components/dashboard/graph/GraphView'
+import { useDashboard } from '@/context/DashboardContext'
+import { ContainerType } from '@/types/containers'
+import { Responsive, WidthProvider } from "react-grid-layout"
 
-export const metadata: Metadata = {
-  title:
-    "Next.js E-commerce Dashboard | TailAdmin - Next.js Dashboard Template",
-  description: "This is Next.js Home for TailAdmin Dashboard Template"
-}
-
+const ResponsiveGridLayout = WidthProvider(Responsive)
 
 export default function Dashboard() {
+  const {containers, lockGrid, logIndex, updateContainerSize} = useDashboard()
+
   return (
     <div className="relative min-h-screen flex flex-col">
-      <div className="grid grid-cols-12 gap-4 md:gap-6 pb-40">
-        {/*<div className="col-span-12 space-y-6 xl:col-span-7">*/ }
-        {/*  <DashboardMetrics/>*/ }
+      <ResponsiveGridLayout
+        className="layout mb-32"
+        cols={ {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2} }
+        rowHeight={ 50 }
+        autoSize={ true }
+        allowOverlap={ false }
+        isDraggable={ !lockGrid }
+        onDragStop={layouts => {
+          layouts.forEach(layout => updateContainerSize(layout))
+        }}
+        onResizeStop={layouts => {
+          layouts.forEach(layout => updateContainerSize(layout))
+        }}
+        draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
+      >
+        { containers.map((container, index) => {
+          switch (container.type) {
+            case ContainerType.graph:
+              return (
+                <div key={ container.id } data-grid={ container.gridLayout }>
+                  {/* @ts-expect-error */ }
+                  <GraphView container={ container }/>
+                </div>
+              )
+            case ContainerType.table:
+              return (
+                <div key={ container.id } data-grid={ container.gridLayout }>
+                  {/* @ts-expect-error */ }
+                  <TableView container={ container }/>
+                </div>
+              )
+            default:
+              return null
+          }
+        }) }
 
-        {/*  <MonthlySalesChart/>*/ }
-        {/*</div>*/ }
-
-        {/*<div className="col-span-12 xl:col-span-5">*/ }
-        {/*  <MonthlyTarget/>*/ }
-        {/*</div>*/ }
-
-        {/*<div className="col-span-12">*/ }
-        {/*  <StatisticsChart/>*/ }
-        {/*</div>*/ }
-
-        {/*<div className="col-span-12 xl:col-span-5">*/ }
-        {/*  <DemographicCard/>*/ }
-        {/*</div>*/ }
-
-        <div className="col-span-12 xl:col-span-7">
-          <RecentOrders/>
+      </ResponsiveGridLayout>
+      { logIndex ? (
+        <div className="fixed bottom-0 left-0 w-full z-50">
+          <Timeline/>
         </div>
-      </div>
-      <div className="fixed bottom-0 left-0 w-full z-50">
-        <Timeline/>
-      </div>
+      ) : (
+        <div className={'w-full h-full'}>
+
+        </div>
+      ) }
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import type { InputSource, OnEvents } from "@/parsers/logs/InputSource";
 import type { LogEvent } from "@/parsers/engine";
+import { toast } from 'react-toastify'
 
 /**
  * Stream/parse NDJSON file line-by-line to avoid huge allocations.
@@ -28,7 +29,7 @@ export function createNdjsonFileSource(file: File): InputSource {
             events.push(obj);
           } catch (err) {
             // optionally log or collect parse errors
-            console.warn("ndjson parse error:", err, line);
+            toast.warn(`ndjson parse error: ${err} line: ${line}`);
           }
         }
       }
@@ -36,7 +37,7 @@ export function createNdjsonFileSource(file: File): InputSource {
         try {
           events.push(JSON.parse(remainder.trim()) as LogEvent);
         } catch (err) {
-          console.warn("ndjson trailing parse error:", err, remainder);
+          toast.warn(`ndjson trailing parse error: ${err} remainder: ${remainder}`);
         }
       }
 
