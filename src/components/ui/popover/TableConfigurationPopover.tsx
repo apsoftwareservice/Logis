@@ -8,6 +8,7 @@ import { Settings } from 'lucide-react'
 import { DashboardContainer, StatisticsModel, TableModel } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
 import { toast } from 'react-toastify'
+import NestedSelect, {NestedObject} from '../nestedSelect'
 
 export interface TableConfigurationPopoverProps {
   logIndex: EventTypeIndex
@@ -21,6 +22,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
 
   const [ event, setEvent ] = useState<string>(container.event)
   const [ columnOptions, setColumnOptions ] = useState<string[]>()
+  const [ data, setData ] = useState<NestedObject>()
   const [ selectedColumns, setSelectedColumns ] = useState<string[]>(container.data.columns ?? [])
   const [ isAddingColumn, setIsAddingColumn ] = useState(false)
   const [ dragIndex, setDragIndex ] = useState<number | null>(null)
@@ -29,10 +31,11 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
     const bucket = logIndex.getBucket(event)
 
     if (bucket) {
-      const payload = bucket?.first()
+      const data = bucket?.first()
 
-      if (payload) {
-        const keys = Object.keys(payload)
+      if (data) {
+        setData(data)
+        const keys = Object.keys(data)
         setColumnOptions(keys)
       } else {
         toast.warning('Event has not data')
@@ -167,34 +170,15 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
             </div>
 
             {/* Add column flow */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-2">
               {!isAddingColumn && (
                 <Button variant="secondary" onClick={() => setIsAddingColumn(true)}>Add column</Button>
               )}
 
-              {isAddingColumn && (
-                <Select
-                  onValueChange={(value) => {
+              {isAddingColumn && data && (
+                  <NestedSelect data={data} onSelect={(value) => {
                     setSelectedColumns((prev) => (prev?.includes(value) ? prev : [...(prev ?? []), value]))
-                    setIsAddingColumn(false)
-                  }}
-                >
-                  <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900 min-w-40">
-                    <SelectValue placeholder="Choose a column" />
-                  </SelectTrigger>
-                  <SelectContent
-                    className={'bg-white'}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  >
-                    {(columnOptions ?? [])
-                      .filter((opt) => !(selectedColumns ?? []).includes(opt))
-                      .map((opt, idx) => (
-                        <SelectItem key={idx} value={opt}>{opt}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                  }} />
               )}
             </div>
           </div>

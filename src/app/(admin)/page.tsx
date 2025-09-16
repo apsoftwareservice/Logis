@@ -7,6 +7,19 @@ import GraphView from '@/components/dashboard/graph/GraphView'
 import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
+import JsonViewer from "@/lib/json-viewer";
+
+const data = {
+  main: {
+    a: {
+      b: {
+        value: 42,
+        text: "hello"
+      }
+    },
+    list: [1, 2, 3]
+  }
+};
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -30,12 +43,11 @@ export default function Dashboard() {
         }}
         draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
       >
-        { containers.map((container, index) => {
+        { containers.map((container) => {
           switch (container.type) {
             case ContainerType.graph:
               return (
                 <div key={ container.id } data-grid={ container.gridLayout }>
-                  {/* @ts-expect-error */ }
                   <GraphView container={ container }/>
                 </div>
               )

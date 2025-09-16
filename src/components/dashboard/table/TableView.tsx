@@ -6,7 +6,7 @@ import { useDashboard } from '@/context/DashboardContext'
 import { AnimatePresence, motion } from "framer-motion"
 import { EventTypeIndex, Observer } from '@/parsers/engine'
 import React, { useEffect, useState } from 'react'
-import { capitalize, cn } from '@/lib/utils'
+import {capitalize, cn, getNestedValue} from '@/lib/utils'
 import { Check } from 'lucide-react'
 import { DashboardContainer, TableModel } from '@/types/containers'
 import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigurationPopover"
@@ -44,8 +44,6 @@ export default function TableView({container}: { container: DashboardContainer<T
     }
   })
 
-  // @ts-ignore
-  // @ts-ignore
   return (
     <div
       className="w-full h-full overflow-y-auto rounded-2xl border border-gray-200 bg-white px-4 pb-3 pt-4 dark:border-gray-800 dark:bg-white/[0.03] sm:px-6">
@@ -99,12 +97,12 @@ export default function TableView({container}: { container: DashboardContainer<T
                   { container.data.columns.map((column, index) => (
                     <>
                       { /*@ts-ignore*/ }
-                    { (item[column].includes('http') || item[column].includes('/')) ? (
+                    { (getNestedValue(item, column)?.includes('http') || getNestedValue(item, column)?.includes('/')) ? (
                         <TableCell className="py-3">
                           <div className="flex items-center gap-3">
                             <div className="h-[50px] w-[50px] overflow-hidden rounded-md">
                                 { /*@ts-ignore*/ }
-                              <Image src={ item[column] }
+                              <Image src={ getNestedValue(item, column) }
                                 width={ 50 }
                                 height={ 50 }
                                 className="h-[50px] w-[50px]"
@@ -116,7 +114,7 @@ export default function TableView({container}: { container: DashboardContainer<T
                       ) : (
                         <TableCell key={index} className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                           {/*@ts-ignore*/}
-                          { item[column] }
+                          { getNestedValue(item, column) }
                         </TableCell>
                       )}
                     </>
