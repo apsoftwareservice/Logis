@@ -9,6 +9,7 @@ import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeRange/TimeLine.types'
 import { DashboardContainer } from '@/types/containers'
 import { Layout } from 'react-grid-layout'
+import { discoverKeys, getNestedValue, toMs } from '@/lib/utils'
 
 type DashboardContextType = {
   logIndex?: EventTypeIndex<unknown>
@@ -32,7 +33,7 @@ type DashboardContextType = {
   parseLogFile: (file: File) => Promise<void>
 
   handleOnSearch: (value: string) => void
-  onTitleChange: (container: DashboardContainer, title: string) => void
+  updateContainerTitle: (container: DashboardContainer, title: string) => void
   updateContainerSize: (layout: Layout) => void
 };
 
@@ -48,10 +49,15 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [containers, setContainers] = useState<DashboardContainer[]>([])
-  const [lockGrid, setLockGrid] = useState(true)
+  const [ containers, setContainers ] = useState<DashboardContainer[]>([])
+  const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
-  const [ clips, setClips ] = useState<Clip[]>([])
+  const [ clips, setClips ] = useState<Clip[]>([]
+    // { id: "A", start: 0, end: 22.5, track: 0, label: "Intro", color: "#fde68a" },
+    // { id: "B", start: 10, end: 42, track: 1, label: "Interview", color: "#bbf7d0" },
+    // { id: "C", start: 44, end: 70, track: 0, label: "B-Roll", color: "#bfdbfe" },
+    // { id: "D", start: 80, end: 110, track: 1, label: "Overlay", color: "#fecaca" }]
+  )
   const [ markers, setMarkers ] = useState<Marker[]>([])
   const [ logIndex, setLogIndex ] = useState<EventTypeIndex>()
   const engine = useRef<TimelineEngine>(null)
@@ -86,7 +92,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
           // fallback: try full JSON then NDJSON by reading text
           const text = await file.text()
           try {
-            const parsed = JSON.parse(text) as LogEvent[]
+            const parsed = JSON.parse(text)
             source = {
               name: "fallback:parsed",
               start: (onEvents) => onEvents(parsed)
@@ -114,11 +120,19 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         const index = EventTypeIndex.fromSortedBatch(events)
         engine.current = new TimelineEngine(index)
         setLogIndex(index)
+        const {dateKey} = discoverKeys(events[0])
+        if (dateKey) {
+          const firstVal = getNestedValue(events[0], dateKey)
+          const lastVal = getNestedValue(events[events.length - 1], dateKey)
+          let start = toMs(firstVal)
+          let end = toMs(lastVal)
 
-        setTimeframe({
-          start: new Date(events[0].date).valueOf(),
-          end: new Date(events[events.length - 1].date).valueOf()
-        })
+          if (start != null && end != null) {
+            setTimeframe({start, end})
+          } else {
+            toast.error('Failed reading logs timestamp')
+          }
+        }
       })
 
     } catch (error) {
@@ -139,21 +153,31 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   }
 
   function handleOnSearch(value: string) {
+    let buckets = []
+
     const bucket = logIndex?.getBucket(value)
 
     if (bucket) {
-      setMarkers(Array.from(bucket.timestampsMs).map(timestamp => {
-        return {
+      buckets = [ bucket ]
+    } else {
+      buckets = logIndex?.getBucketsIncludingType(value) ?? []
+    }
+
+    const markers: Marker[] = buckets
+      .map(bucket =>
+        Array.from(bucket.timestampsMs).map(timestamp => ({
           id: crypto.randomUUID(),
           time: timestamp,
           color: 'red',
           label: value
-        } as Marker
-      }))
-    }
+        }))
+      )
+      .flat()
+
+    setMarkers(markers)
   }
 
-  function onTitleChange(container: DashboardContainer, title: string) {
+  function updateContainerTitle(container: DashboardContainer, title: string) {
     setContainers(containers => containers.map(_container => {
       if (_container.id === container.id) {
         return {
@@ -183,18 +207,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
-  function updateContainerPosition(container: DashboardContainer, title: string) {
-    setContainers(containers => containers.map(_container => {
-      if (_container.id === container.id) {
-        return {
-          ..._container,
-          title
-        }
-      }
-      return _container
-    }))
-  }
-
   return (
     <DashboardContext.Provider
       value={ {
@@ -213,7 +225,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setContainers,
         lockGrid,
         setLockGrid,
-        onTitleChange,
+        updateContainerTitle,
         updateContainerSize
       } }
     >

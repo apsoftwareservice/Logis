@@ -82,7 +82,7 @@ export default function TableView({container}: { container: DashboardContainer<T
                   isHeader
                   className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
-                  { capitalize(column) }
+                  { capitalize(column.split('.').pop() ?? '') }
                 </TableCell>
               )) }
             </TableRow>
@@ -95,62 +95,29 @@ export default function TableView({container}: { container: DashboardContainer<T
               { item.map((item, index) => (
                 <MotionRow key={ index } layout className="overflow-hidden">
                   { container.data.columns.map((column, index) => (
-                    <>
+                    <TableCell key={index} className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
                       { /*@ts-ignore*/ }
-                    { (getNestedValue(item, column)?.includes('http') || getNestedValue(item, column)?.includes('/')) ? (
-                        <TableCell className="py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="h-[50px] w-[50px] overflow-hidden rounded-md">
-                                { /*@ts-ignore*/ }
-                              <Image src={ getNestedValue(item, column) }
-                                width={ 50 }
-                                height={ 50 }
-                                className="h-[50px] w-[50px]"
-                                alt={ 'image' }
-                              />
-                            </div>
+                      { (getNestedValue(item, column)?.includes('http') || getNestedValue(item, column)?.includes('/')) ? (
+
+                        <div className="flex items-center gap-3">
+                          <div className="h-[50px] w-[50px] overflow-hidden rounded-md">
+                            { /*@ts-ignore*/ }
+                            <Image src={ getNestedValue(item, column) }
+                                   width={ 50 }
+                                   height={ 50 }
+                                   className="h-[50px] w-[50px]"
+                                   alt={ 'image' }
+                            />
                           </div>
-                        </TableCell>
+                        </div>
+
                       ) : (
-                        <TableCell key={index} className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                          {/*@ts-ignore*/}
+                        <>
                           { getNestedValue(item, column) }
-                        </TableCell>
-                      )}
-                    </>
+                        </>
+                        )}
+                    </TableCell>
                   ))}
-                  {/*<TableCell className="py-3">*/}
-                  {/*  <div className="flex items-center gap-3">*/}
-                  {/*    <div>*/}
-                  {/*      <p className="font-medium text-gray-800 text-theme-sm dark:text-white/90">*/}
-                  {/*        { product.name }*/}
-                  {/*      </p>*/}
-                  {/*      <span className="text-gray-500 text-theme-xs dark:text-gray-400">*/}
-                  {/*        { product.variants }*/}
-                  {/*      </span>*/}
-                  {/*    </div>*/}
-                  {/*  </div>*/}
-                  {/*</TableCell>*/}
-                  {/*<TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">*/}
-                  {/*  { product.category }*/}
-                  {/*</TableCell>*/}
-                  {/*<TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">*/}
-                  {/*  { product.price }*/}
-                  {/*</TableCell>*/}
-                  {/*<TableCell className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">*/}
-                  {/*  <Badge*/}
-                  {/*    size="sm"*/}
-                  {/*    color={*/}
-                  {/*      product.status === "Delivered"*/}
-                  {/*        ? "success"*/}
-                  {/*        : product.status === "Pending"*/}
-                  {/*          ? "warning"*/}
-                  {/*          : "error"*/}
-                  {/*    }*/}
-                  {/*  >*/}
-                  {/*    { product.status }*/}
-                  {/*  </Badge>*/}
-                  {/*</TableCell>*/}
                 </MotionRow>
               )) }
             </AnimatePresence>

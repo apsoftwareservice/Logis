@@ -98,7 +98,7 @@ type DotPath<T> = T extends object
           ? `${K}` | `${K}.${DotPath<T[K]>}`
           : `${K}`;
     }[keyof T & (string | number)]
-    : never;
+    : any;
 
 // This type also allows you to get the return type based on the path
 type PathValue<T, P extends string> = P extends keyof T
@@ -106,8 +106,8 @@ type PathValue<T, P extends string> = P extends keyof T
     : P extends `${infer K}.${infer R}`
         ? K extends keyof T
             ? PathValue<T[K], R>
-            : never
-        : never;
+            : any
+        : any;
 
 /**
  * Safely gets a nested property value from an object using a dot-notation string.
@@ -116,7 +116,7 @@ type PathValue<T, P extends string> = P extends keyof T
  * @param path The dot-separated string path (e.g., "user.address.street").
  * @returns The value at the specified path, or undefined if not found.
  */
-export function getNestedValue<T extends object, P extends DotPath<T>>(obj: T, path: P): PathValue<T, P> | undefined {
+export function getNestedValue<T extends object, P extends DotPath<T>>(obj: object, path: string): PathValue<T, P> | undefined {
   if (typeof obj !== 'object' || obj === null) {
     return undefined;
   }
@@ -132,4 +132,36 @@ export function getNestedValue<T extends object, P extends DotPath<T>>(obj: T, p
   }
 
   return current as PathValue<T, P>;
+}
+
+// Helper to convert a value to a millisecond timestamp (accepts ms, sec, ISO string, Date)
+export function toMs(v: unknown): number | null {
+  if (v == null) return null
+  if (typeof v === 'number') {
+    // If it's likely seconds, convert to ms; if already ms, keep as is
+    const ms = v > 1e12 ? v : v * 1000
+    return Number.isFinite(ms) ? ms : null
+  }
+  const parsed = Date.parse(String(v))
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+export function seekValueToEpochMs(value: number, startTime: number, endTime: number) {
+  const durationMs = endTime - startTime;
+
+  // Heuristics for common slider outputs:
+  if (value >= 0 && value <= 1) {
+    // normalized [0..1]
+    return startTime + value * durationMs;
+  }
+  if (value < 1e10) {
+    // very likely seconds from start
+    return startTime + value * 1000;
+  }
+  if (value < 1e12) {
+    // very likely milliseconds from start
+    return startTime + value;
+  }
+  // already an absolute epoch ms
+  return value;
 }

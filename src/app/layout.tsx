@@ -7,6 +7,7 @@ import { DashboardProvider } from '@/context/DashboardContext'
 import { Bounce, Slide, ToastContainer } from 'react-toastify'
 import '/node_modules/react-grid-layout/css/styles.css'
 import '/node_modules/react-resizable/css/styles.css'
+import DropZone from '@/components/ui/dropdown/DropZone'
 
 const outfit = Outfit({
   subsets: ["latin"],

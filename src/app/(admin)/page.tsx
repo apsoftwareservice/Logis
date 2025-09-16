@@ -7,24 +7,12 @@ import GraphView from '@/components/dashboard/graph/GraphView'
 import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
-import JsonViewer from "@/lib/json-viewer";
-
-const data = {
-  main: {
-    a: {
-      b: {
-        value: 42,
-        text: "hello"
-      }
-    },
-    list: [1, 2, 3]
-  }
-};
+import DropZone from '@/components/ui/dropdown/DropZone'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
 export default function Dashboard() {
-  const {containers, lockGrid, logIndex, updateContainerSize} = useDashboard()
+  const {containers, lockGrid, logIndex, updateContainerSize, parseLogFile} = useDashboard()
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -35,12 +23,12 @@ export default function Dashboard() {
         autoSize={ true }
         allowOverlap={ false }
         isDraggable={ !lockGrid }
-        onDragStop={layouts => {
+        onDragStop={ layouts => {
           layouts.forEach(layout => updateContainerSize(layout))
-        }}
-        onResizeStop={layouts => {
+        } }
+        onResizeStop={ layouts => {
           layouts.forEach(layout => updateContainerSize(layout))
-        }}
+        } }
         draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
       >
         { containers.map((container) => {
@@ -48,6 +36,7 @@ export default function Dashboard() {
             case ContainerType.graph:
               return (
                 <div key={ container.id } data-grid={ container.gridLayout }>
+                  {/* @ts-expect-error */ }
                   <GraphView container={ container }/>
                 </div>
               )
@@ -62,17 +51,19 @@ export default function Dashboard() {
               return null
           }
         }) }
-
       </ResponsiveGridLayout>
       { logIndex ? (
         <div className="fixed bottom-0 left-0 w-full z-50">
           <Timeline/>
         </div>
       ) : (
-        <div className={'w-full h-full'}>
+        <div className={ 'w-full h-full' }>
 
         </div>
       ) }
+      <DropZone onFilesDropped={ (files) => {
+        parseLogFile(files[0]).then()
+      } }/>
     </div>
   )
 }

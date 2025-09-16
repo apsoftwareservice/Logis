@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select';
 
 // A generic type for any nested object.
@@ -42,7 +43,7 @@ function NestedSelect<T extends NestedObject>({ data, onSelect, prefix = '' }: N
         <Select
             onValueChange={(value: keyof T) => {
                 setSelectedValue(value);
-                const fullPath = prefix ? `${prefix}.${value}` : `${value}`;
+                const fullPath = prefix ? `${prefix}.${value.toString()}` : `${value.toString()}`;
 
                 // Check if the next level is an object.
                 if (typeof data[value] !== 'object' || data[value] === null) {
@@ -52,17 +53,25 @@ function NestedSelect<T extends NestedObject>({ data, onSelect, prefix = '' }: N
             }}
         >
             <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900 min-w-40">
-                <SelectValue placeholder="Choose a column" />
+                <SelectValue placeholder="Choose value" />
             </SelectTrigger>
-            <SelectContent className={'bg-white'}>
+            <SelectContent className={'bg-white cursor-pointer'}>
                 {keys.map((key) => (
                     // Value must be a string.
-                    <SelectItem key={String(key)} value={String(key)}>{String(key)}</SelectItem>
+                    <SelectItem key={String(key)} value={String(key)}>
+                        <div className="flex items-center justify-between cursor-pointer">
+                            <span>{String(key)}</span>
+                            {typeof data[key] === 'object' && data[key] !== null && (
+                                <ChevronRight className="ml-2 h-4 w-4" />
+                            )}
+                        </div>
+                    </SelectItem>
                 ))}
             </SelectContent>
             {/* Recursively render another NestedSelect if the selected value is a nested object */}
             {selectedValue && typeof data[selectedValue] === 'object' && data[selectedValue] !== null && (
                 <NestedSelect
+                  //@ts-expect-error
                     data={data[selectedValue] as NestedObject}
                     onSelect={onSelect}
                     prefix={prefix ? `${prefix}.${String(selectedValue)}` : String(selectedValue)}

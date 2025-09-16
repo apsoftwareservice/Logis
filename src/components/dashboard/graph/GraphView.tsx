@@ -6,9 +6,8 @@ import dynamic from "next/dynamic"
 import { GraphConfigurationPopover } from '@/components/ui/popover/GraphConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/parsers/engine'
-import { DashboardContainer } from '@/types/containers'
-import { StatisticsModel } from '@/types/statistics'
-import { cn, parseNumeric } from '@/lib/utils'
+import { DashboardContainer, StatisticsModel } from '@/types/containers'
+import { cn, getNestedValue, parseNumeric } from '@/lib/utils'
 import { Check } from 'lucide-react'
 
 // Dynamically import the ReactApexChart component
@@ -42,16 +41,19 @@ type ChartDataPoint = { x: any; y: number }
  * @returns           A dense array of `{ x, y }` points ready for ApexCharts.
  */
 function extractDataPointsFromPayloads(payloadList: unknown[], axisNames: AxisNames): ChartDataPoint[] {
-  const {xAxisParameterName, yAxisParameterName} = axisNames
+  const { xAxisParameterName, yAxisParameterName } = axisNames
   const result: ChartDataPoint[] = []
 
-  for (let index = 0; index < payloadList.length; index++) {
-    const payload = payloadList[index] as any
-    const xValue = payload?.[xAxisParameterName]
-    if (xValue === undefined) continue
-    const yValue = parseNumeric(payload?.[yAxisParameterName])
-    if (yValue === null) continue
-    result.push({x: xValue, y: yValue})
+  for (let i = 0; i < payloadList.length; i++) {
+    const payload = payloadList[i] as any
+    const x = getNestedValue(payload, xAxisParameterName)
+    if (x === undefined) continue
+
+    const yRaw = getNestedValue(payload, yAxisParameterName)
+    const y = parseNumeric(yRaw) // returns number | null
+    if (typeof y !== 'number' || !Number.isFinite(y)) continue
+
+    result.push({ x, y })
   }
 
   return result

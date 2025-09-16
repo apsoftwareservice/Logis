@@ -201,6 +201,17 @@ export class EventTypeIndex<TPayload = unknown> {
     return this.bucketsByType.get(type);
   }
 
+  /** Retrieve all buckets whose type key includes the given substring. */
+  getBucketsIncludingType(substring: string): EventBucket<TPayload>[] {
+    const results: EventBucket<TPayload>[] = [];
+    for (const [key, bucket] of this.bucketsByType.entries()) {
+      if (key.toLowerCase().includes(substring.toLowerCase())) {
+        results.push(bucket);
+      }
+    }
+    return results;
+  }
+
   /** Ensure a bucket exists (useful for observer registration). */
   getOrCreateBucket(type: string): EventBucket<TPayload> {
     let bucket = this.bucketsByType.get(type);
