@@ -1,3 +1,4 @@
+import { DotPath } from '@/components/ui/nestedSelect';
 import clsx, { ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -92,43 +93,55 @@ export function discoverKeys(event: any) {
   return { dateKey: foundDateKey, messageKey: foundMessageKey };
 }
 
-type DotPath<T> = T extends object
-    ? {
-      [K in keyof T & (string | number)]: T[K] extends object
-          ? `${K}` | `${K}.${DotPath<T[K]>}`
-          : `${K}`;
-    }[keyof T & (string | number)]
-    : any;
-
-// This type also allows you to get the return type based on the path
-type PathValue<T, P extends string> = P extends keyof T
-    ? T[P]
-    : P extends `${infer K}.${infer R}`
+// PathValue type to infer the return type of getNestedValue
+type PathValue<T, P extends string> =
+    P extends `${infer K}.${infer Rest}`
         ? K extends keyof T
-            ? PathValue<T[K], R>
-            : any
-        : any;
+            ? PathValue<T[K], Rest>
+            : undefined
+        : P extends `${infer K}[${number}]`
+            ? K extends keyof T
+                ? T[K] extends (infer U)[]
+                    ? U
+                    : undefined
+                : undefined
+            : P extends keyof T
+                ? T[P]
+                : undefined;
 
 /**
- * Safely gets a nested property value from an object using a dot-notation string.
+ * Safely gets a nested property value from an object using a dot-notation or bracket-notation string.
  * This function is type-safe and provides autocompletion for the path string.
+ * It is now capable of traversing arrays using bracket notation (e.g., "user.friends[0].name").
  * @param obj The object to search within.
- * @param path The dot-separated string path (e.g., "user.address.street").
+ * @param path The dot-separated or bracket-separated string path (e.g., "user.address.street" or "data.items[0].name").
  * @returns The value at the specified path, or undefined if not found.
  */
-export function getNestedValue<T extends object, P extends DotPath<T>>(obj: object, path: string): PathValue<T, P> | undefined {
+export function getNestedValue<T extends object, P extends DotPath<T>>(obj: T, path: P): PathValue<T, P> | undefined {
   if (typeof obj !== 'object' || obj === null) {
     return undefined;
   }
 
-  const keys = path.split('.');
+  // Regex to split the path by dots and array brackets.
+  // It handles paths like 'user.profile.items[0].name'
+  const keys = path.split(/\.|\[(\d+)\]/).filter(Boolean);
 
   let current: any = obj;
   for (const key of keys) {
-    if (current === null || current === undefined || typeof current !== 'object' || !(key in current)) {
+    if (current === null || current === undefined || typeof current !== 'object') {
       return undefined;
     }
-    current = current[key];
+
+    if (Array.isArray(current) && !isNaN(Number(key))) {
+      // If the current value is an array and the key is a number, access the array index.
+      current = current[Number(key)];
+    } else if (typeof current === 'object' && key in current) {
+      // Otherwise, access the object property.
+      current = current[key];
+    } else {
+      // If the key does not exist in the current object or array, return undefined.
+      return undefined;
+    }
   }
 
   return current as PathValue<T, P>;

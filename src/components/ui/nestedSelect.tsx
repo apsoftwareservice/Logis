@@ -1,53 +1,50 @@
+// Import the necessary components and hooks
 import React, { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select';
 
-// A generic type for any nested object.
-// We use a recursive type where keys map to either a primitive or another NestedObject.
+// Updated types from step 1
 export type NestedObject = {
-    [key: string]: string | number | boolean | NestedObject;
+    [key: string]: string | number | boolean | NestedObject | NestedObject[] | string[] | number[] | boolean[];
 };
 
-// This utility type will help us later to get the path as a string.
-type DotPath<T> = T extends object
+export type DotPath<T> = T extends object
     ? {
         [K in keyof T & (string | number)]: T[K] extends object
-            ? `${K}` | `${K}.${DotPath<T[K]>}`
+            ? T[K] extends (infer U)[]
+                ? U extends object
+                    ? `${K}` | `${K}[${number}]` | `${K}[${number}].${DotPath<U>}`
+                    : `${K}` | `${K}[${number}]`
+                : `${K}` | `${K}.${DotPath<T[K]>}`
             : `${K}`;
     }[keyof T & (string | number)]
     : never;
 
-// Use a generic T to represent the type of the nested object.
-// The onSelect callback will now have a strongly-typed parameter.
 interface NestedSelectProps<T extends NestedObject> {
-    data: T;
-    // The onSelect function now expects a string that is a valid dot-path of T.
+    data: T | T[] | string[] | number[] | boolean[];
     onSelect: (path: DotPath<T>) => void;
-    // An optional prefix for building the full path
     prefix?: string;
 }
 
-// Pass the generic type T to the component definition.
 function NestedSelect<T extends NestedObject>({ data, onSelect, prefix = '' }: NestedSelectProps<T>) {
-    const [selectedValue, setSelectedValue] = useState<keyof T | null>(null);
+    const [selectedValue, setSelectedValue] = useState<string | null>(null);
 
-    // Check if the current data is a valid nested object
-    const isNested = typeof data === 'object' && data !== null && !Array.isArray(data);
-    if (!isNested) {
-        return null;
-    }
-
-    const keys = Object.keys(data) as (keyof T)[];
+    // If the current data is an array, we'll render its items.
+    const isArray = Array.isArray(data);
+    const keys = isArray ? data.map((_, index) => index.toString()) : Object.keys(data as T);
 
     return (
         <Select
-            onValueChange={(value: keyof T) => {
+            onValueChange={(value: string) => {
                 setSelectedValue(value);
-                const fullPath = prefix ? `${prefix}.${value.toString()}` : `${value.toString()}`;
+                const fullPath = isArray
+                    ? `${prefix}[${value}]`
+                    : prefix ? `${prefix}.${value}` : `${value}`;
 
-                // Check if the next level is an object.
-                if (typeof data[value] !== 'object' || data[value] === null) {
-                    // If it's a leaf node, call the onSelect handler with the full path.
+                const nextData = isArray ? data[Number(value)] : (data as T)[value as keyof T];
+
+                // Check if the next level is an object or an array.
+                if (typeof nextData !== 'object' || nextData === null) {
                     onSelect(fullPath as DotPath<T>);
                 }
             }}
@@ -57,24 +54,27 @@ function NestedSelect<T extends NestedObject>({ data, onSelect, prefix = '' }: N
             </SelectTrigger>
             <SelectContent className={'bg-white cursor-pointer'}>
                 {keys.map((key) => (
-                    // Value must be a string.
                     <SelectItem key={String(key)} value={String(key)}>
                         <div className="flex items-center justify-between cursor-pointer">
                             <span>{String(key)}</span>
-                            {typeof data[key] === 'object' && data[key] !== null && (
+                            {(isArray
+                                ? typeof data[Number(key)] === 'object' && data[Number(key)] !== null
+                                : typeof (data as T)[key as keyof T] === 'object' && (data as T)[key as keyof T] !== null) && (
                                 <ChevronRight className="ml-2 h-4 w-4" />
                             )}
                         </div>
                     </SelectItem>
                 ))}
             </SelectContent>
-            {/* Recursively render another NestedSelect if the selected value is a nested object */}
-            {selectedValue && typeof data[selectedValue] === 'object' && data[selectedValue] !== null && (
+            {/* Recursively render another NestedSelect */}
+            {selectedValue && (isArray
+                ? typeof data[Number(selectedValue)] === 'object' && data[Number(selectedValue)] !== null
+                : typeof (data as T)[selectedValue as keyof T] === 'object' && (data as T)[selectedValue as keyof T] !== null) && (
                 <NestedSelect
-                  //@ts-expect-error
-                    data={data[selectedValue] as NestedObject}
+                    //@ts-expect-error ignore
+                    data={isArray ? data[Number(selectedValue)] : (data as T)[selectedValue as keyof T] as NestedObject}
                     onSelect={onSelect}
-                    prefix={prefix ? `${prefix}.${String(selectedValue)}` : String(selectedValue)}
+                    prefix={isArray ? `${prefix}[${selectedValue}]` : prefix ? `${prefix}.${String(selectedValue)}` : String(selectedValue)}
                 />
             )}
         </Select>
