@@ -1,5 +1,5 @@
 "use client"
-import React, { createContext, useContext, useEffect, useRef, useState } from "react"
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/parsers/engine'
 import { detectFileFormat, FileFormat } from '@/parsers/logs/detectFileFormat'
 import { InputSource } from '@/parsers/logs/InputSource'
@@ -23,8 +23,8 @@ type DashboardContextType = {
   markers: Marker[]
   setMarkers: React.Dispatch<React.SetStateAction<Marker[]>>
 
-  containers: DashboardContainer[]
-  setContainers: React.Dispatch<React.SetStateAction<DashboardContainer[]>>
+  containers: DashboardContainer<object>[]
+  setContainers: React.Dispatch<React.SetStateAction<DashboardContainer<object>[]>>
 
   currentTimestamp: number
   setCurrentTimestamp: React.Dispatch<React.SetStateAction<number>>
@@ -33,7 +33,7 @@ type DashboardContextType = {
   parseLogFile: (file: File) => Promise<void>
 
   handleOnSearch: (value: string) => void
-  updateContainerTitle: (container: DashboardContainer, title: string) => void
+  updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
 };
 
@@ -49,7 +49,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [ containers, setContainers ] = useState<DashboardContainer[]>([])
+  const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
   const [ clips, setClips ] = useState<Clip[]>([]
@@ -63,12 +63,25 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const engine = useRef<TimelineEngine>(null)
   const [ timeframe, setTimeframe ] = useState<{ start: number, end: number }>({start: 0, end: 1})
 
-  let pendingTs: number | null = null
-  let scheduled = false
+  const pendingTsRef = useRef<number | null>(null)
+  const scheduledRef = useRef(false)
+
+  const requestSeek = useCallback((timestamp: number) => {
+    pendingTsRef.current = timestamp
+    if (scheduledRef.current) return
+    scheduledRef.current = true
+    requestAnimationFrame(() => {
+      scheduledRef.current = false
+      const ts = pendingTsRef.current
+      if (ts == null) return
+      engine.current?.moveTo(ts)
+      pendingTsRef.current = null
+    })
+  }, [])
 
   useEffect(() => {
     requestSeek(currentTimestamp)
-  }, [ currentTimestamp ])
+  }, [currentTimestamp, requestSeek])
 
   function registerObserver(observer: Observer) {
     engine.current?.register(observer)
@@ -124,8 +137,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         if (dateKey) {
           const firstVal = getNestedValue(events[0], dateKey)
           const lastVal = getNestedValue(events[events.length - 1], dateKey)
-          let start = toMs(firstVal)
-          let end = toMs(lastVal)
+          const start = toMs(firstVal)
+          const end = toMs(lastVal)
 
           if (start != null && end != null) {
             setTimeframe({start, end})
@@ -138,18 +151,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     } catch (error) {
       toast.error(`${ error }`)
     }
-  }
-
-  function requestSeek(timestamp: number) {
-    pendingTs = timestamp
-    if (scheduled) return
-    scheduled = true
-    requestAnimationFrame(() => {
-      scheduled = false
-      if (pendingTs == null) return
-      engine.current?.moveTo(pendingTs)
-      pendingTs = null
-    })
   }
 
   function handleOnSearch(value: string) {
@@ -177,7 +178,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     setMarkers(markers)
   }
 
-  function updateContainerTitle(container: DashboardContainer, title: string) {
+  function updateContainerTitle(container: DashboardContainer<object>, title: string) {
     setContainers(containers => containers.map(_container => {
       if (_container.id === container.id) {
         return {

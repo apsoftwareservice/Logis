@@ -23,9 +23,7 @@ export class TimelineEngine {
 
 // --- Core types --------------------------------------------------------------
 
-export type LogEvent<TPayload = unknown> = {
-
-};
+export type LogEvent<TPayload = unknown> = Record<string, unknown>;
 
 export type EventPoint<TPayload = unknown> = {
   timestampMs: number;
@@ -151,7 +149,7 @@ export class EventBucket<TPayload = unknown> {
 export class EventTypeIndex<TPayload = unknown> {
   private bucketsByType = new Map<string, EventBucket<TPayload>>();
 
-  static fromSortedBatch<TPayload extends Record<string, never>>(events: TPayload[]): EventTypeIndex<TPayload> {
+  static fromSortedBatch<TPayload extends Record<string, any>>(events: TPayload[]): EventTypeIndex<TPayload> {
     if (events.length === 0) {
       return new EventTypeIndex<TPayload>();
     }
@@ -185,8 +183,8 @@ export class EventTypeIndex<TPayload = unknown> {
       toast.error("Could not determine date or message keys from the log file.");
       return;
     }
-    const message = (<Record<string, never>>event)[messageKey]
-    const date = (<Record<string, never>>event)[dateKey]
+    const message = (<Record<string, any>>event)[messageKey]
+    const date = (<Record<string, any>>event)[dateKey]
 
     let bucket = this.bucketsByType.get(message);
     if (!bucket) {

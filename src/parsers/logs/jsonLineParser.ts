@@ -19,14 +19,14 @@ async function* linesFromFile(file: File) {
 }
 
 // usage — iterate lines and parse NDJSON:
-async function parseNdjsonFile(file: File) {
-  for await (const line of linesFromFile(file)) {
-    if (!line.trim()) continue;
-    try {
-      const event = JSON.parse(line);
-      // handle event...
-    } catch (err) {
-      console.warn("invalid JSON line", line, err);
-    }
-  }
-}
+// async function parseNdjsonFile(file: File) {
+//   for await (const line of linesFromFile(file)) {
+//     if (!line.trim()) continue;
+//     try {
+//       const event = JSON.parse(line);
+//       // handle event...
+//     } catch (err) {
+//       console.warn("invalid JSON line", line, err);
+//     }
+//   }
+// }

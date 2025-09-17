@@ -3,7 +3,7 @@ export enum ContainerType {
   table = 'table'
 }
 
-export type DashboardContainer<T extends object = {}> = {
+export type DashboardContainer<T extends object> = {
   id: string
   title: string
   type: ContainerType

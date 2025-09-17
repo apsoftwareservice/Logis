@@ -38,7 +38,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
         toast.warning('Event has not data')
       }
     }
-  }, [ event ])
+  }, [ logIndex, event ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -123,7 +123,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
                     setDragIndex(null)
                   } }
                   onDragEnd={ () => setDragIndex(null) }
-                  aria-grabbed={ dragIndex === i }
+                  aria-selected={ dragIndex === i }
                   role="option"
                   className={ `py-1 text-xs cursor-move select-none ${
                     dragIndex === i ? 'opacity-60' : ''

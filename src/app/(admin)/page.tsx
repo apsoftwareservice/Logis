@@ -36,14 +36,14 @@ export default function Dashboard() {
             case ContainerType.graph:
               return (
                 <div key={ container.id } data-grid={ container.gridLayout }>
-                  {/* @ts-expect-error */ }
+                  {/* @ts-expect-error ignore*/ }
                   <GraphView container={ container }/>
                 </div>
               )
             case ContainerType.table:
               return (
                 <div key={ container.id } data-grid={ container.gridLayout }>
-                  {/* @ts-expect-error */ }
+                  {/* @ts-expect-error ignore */ }
                   <TableView container={ container }/>
                 </div>
               )

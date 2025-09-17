@@ -1,28 +1,34 @@
 "use client"
 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../ui/table"
-import Badge from "../../ui/badge/Badge"
 import { useDashboard } from '@/context/DashboardContext'
 import { AnimatePresence, motion } from "framer-motion"
 import { EventTypeIndex, Observer } from '@/parsers/engine'
-import React, { useEffect, useState } from 'react'
-import {capitalize, cn, getNestedValue} from '@/lib/utils'
+import React, { useEffect, useReducer, useState } from 'react'
+import { capitalize, cn, getNestedValue } from '@/lib/utils'
 import { Check } from 'lucide-react'
 import { DashboardContainer, TableModel } from '@/types/containers'
 import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigurationPopover"
 import Image from 'next/image'
 
-export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
-  const {registerObserver, logIndex, onTitleChange, lockGrid} = useDashboard()
+function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
+  // If container.title is defined, use it, otherwise fallback
+  return nextContainerTitle ?? "Table";
+}
+
+export default function TableView({container}: { container: DashboardContainer<TableModel>}) {
+  const {registerObserver, logIndex, updateContainerTitle, lockGrid} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
   const MotionRow = motion.tr
-  const [ title, setTitle ] = useState(container.title)
+  const [ title, dispatchTitle ] = useReducer(
+    titleReducer,
+    container.title ?? "Table"
+  );
 
+  // Whenever container.title changes, dispatch to reducer
   useEffect(() => {
-    if (title !== container.title) {
-      setTitle(container.title)
-    }
-  }, [ lockGrid ])
+    dispatchTitle(container.title);
+  }, [container.title]);
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: crypto.randomUUID(),
@@ -52,12 +58,12 @@ export default function TableView({container}: { container: DashboardContainer<T
           <input
             type="text"
             value={ title }
-            onChange={ (e) => setTitle(e.target.value) }
+            onChange={ (e) => dispatchTitle(e.target.value) }
             disabled={ lockGrid }
             className={ cn("text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent ", !lockGrid && "border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400") }
           />
           { !lockGrid && (
-            <button onClick={ () => onTitleChange(container, title) }>
+            <button onClick={ () => updateContainerTitle(container, title) }>
               <Check className={ 'text-green-600' }></Check>
             </button>
           ) }
@@ -78,7 +84,7 @@ export default function TableView({container}: { container: DashboardContainer<T
             <TableRow>
               { container.data?.columns?.map((column, index) => (
                 <TableCell
-                  key={index}
+                  key={ index }
                   isHeader
                   className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                 >
@@ -113,11 +119,12 @@ export default function TableView({container}: { container: DashboardContainer<T
 
                       ) : (
                         <>
+                          { /*@ts-ignore*/ }
                           { getNestedValue(item, column) }
                         </>
-                        )}
+                      ) }
                     </TableCell>
-                  ))}
+                  )) }
                 </MotionRow>
               )) }
             </AnimatePresence>

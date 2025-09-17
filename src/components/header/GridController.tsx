@@ -1,8 +1,6 @@
-import React, { useState } from "react"
+import React from "react"
 
-import { Lock, LockOpen, SquarePlus } from "lucide-react"
-import DropdownPopover from '@/components/header/DropdownPopover'
-import { ContainerType } from '@/types/containers'
+import { Lock, LockOpen } from "lucide-react"
 import { useDashboard } from '@/context/DashboardContext'
 
 export default function GridController() {
@@ -15,7 +13,7 @@ export default function GridController() {
         onClick={ () => setLockGrid(!lockGrid) }
         aria-label="Upload file"
       >
-        { lockGrid ? (<Lock width={20} height={20}/>) : (<LockOpen width={20} height={20}/>)}
+        { lockGrid ? (<Lock width={ 20 } height={ 20 }/>) : (<LockOpen width={ 20 } height={ 20 }/>) }
       </button>
     </div>
   )

@@ -67,10 +67,10 @@ export default function TimelineSlider({
                                        }: TimelineSliderProps) {
   const duration = Math.max(0, (endDate - startDate) / 1000) // seconds
 
-  const timestampToSeconds = (ts: number) => (ts - startDate) / 1000 // epoch ms -> seconds from start
-  const secondsToTimestamp = (sec: number) => startDate + sec * 1000   // seconds from start -> epoch ms
+  const timestampToSeconds = useCallback((ts: number) => (ts - startDate) / 1000, [startDate]) // epoch ms -> seconds from start
+  const secondsToTimestamp = useCallback((sec: number) => startDate + sec * 1000, [startDate])   // seconds from start -> epoch ms
 
-  const currentSecond = useMemo(() => timestampToSeconds(currentTime), [ currentTime, startDate ])
+  const currentSecond = useMemo(() => timestampToSeconds(currentTime), [currentTime, timestampToSeconds])
   const [ isShowingFullSlider, setIsShowingFullSlider ] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [ isPlaying, setIsPlaying ] = useState(false)
@@ -110,7 +110,7 @@ export default function TimelineSlider({
       const delta = currentSecond - win.end
       setWin(w => ({start: w.start + delta, end: w.end + delta}))
     }
-  }, [ currentSecond ])
+  }, [currentSecond, win.end, win.start])
 
   // Drive playback from currentTime to end using requestAnimationFrame
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function TimelineSlider({
       rafRef.current = null
       lastTimestampRef.current = null
     }
-  }, [ isPlaying, currentSecond, duration, onSeek, speedIdx ])
+  }, [isPlaying, currentSecond, duration, onSeek, speedIdx, secondsToTimestamp])
 
   // Wheel: zoom with ctrl/cmd, pan with shift (or two-finger horizontal)
   const onWheel = useCallback((e: React.WheelEvent) => {
@@ -192,7 +192,7 @@ export default function TimelineSlider({
         onSeek(secondsToTimestamp(duration))
         break
     }
-  }, [ currentSecond, duration, onSeek, currentUnit, startDate, endDate ])
+  }, [secondsToTimestamp, currentSecond, currentUnit, startDate, endDate, onSeek, duration])
 
   // Generate dynamic tick marks (calendar boundaries for chosen unit)
   const ticks = useMemo(() => {
@@ -211,7 +211,7 @@ export default function TimelineSlider({
       t = addUnit(t, unit, 1)
     }
     return out
-  }, [ win.start, win.end, windowLen, currentUnit ])
+  }, [windowLen, secondsToTimestamp, win.start, win.end, currentUnit, timestampToSeconds])
 
   const visibleMarkers = markers.filter(m => {
     const s = timestampToSeconds(m.time)

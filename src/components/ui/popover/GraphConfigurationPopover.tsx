@@ -39,7 +39,7 @@ export function GraphConfigurationPopover({logIndex, container, onChange}: Graph
         toast.warning('Event has not data')
       }
     }
-  }, [ event ])
+  }, [ logIndex, event ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useReducer, useRef, useState } from "react"
 import { ApexOptions } from "apexcharts"
 import dynamic from "next/dynamic"
 import { GraphConfigurationPopover } from '@/components/ui/popover/GraphConfigurationPopover'
@@ -41,7 +41,7 @@ type ChartDataPoint = { x: any; y: number }
  * @returns           A dense array of `{ x, y }` points ready for ApexCharts.
  */
 function extractDataPointsFromPayloads(payloadList: unknown[], axisNames: AxisNames): ChartDataPoint[] {
-  const { xAxisParameterName, yAxisParameterName } = axisNames
+  const {xAxisParameterName, yAxisParameterName} = axisNames
   const result: ChartDataPoint[] = []
 
   for (let i = 0; i < payloadList.length; i++) {
@@ -53,7 +53,7 @@ function extractDataPointsFromPayloads(payloadList: unknown[], axisNames: AxisNa
     const y = parseNumeric(yRaw) // returns number | null
     if (typeof y !== 'number' || !Number.isFinite(y)) continue
 
-    result.push({ x, y })
+    result.push({x, y})
   }
 
   return result
@@ -68,6 +68,11 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
   return `${ yAxisName }|${ dataPoints.length }|${ lastPoint ? `${ lastPoint.x }:${ lastPoint.y }` : '' }`
 }
 
+function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
+  // If container.title is defined, use it, otherwise fallback
+  return nextContainerTitle ?? "Graph";
+}
+
 /**
  * StatisticsChart
  *
@@ -77,15 +82,17 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
  * points and the series is updated only when needed.
  */
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
-  const {logIndex, registerObserver, onTitleChange, lockGrid} = useDashboard()
+  const {logIndex, registerObserver, updateContainerTitle, lockGrid} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
-  const [ title, setTitle ] = useState(container.title ?? "Graph")
+  const [ title, dispatchTitle ] = useReducer(
+    titleReducer,
+    container.title ?? "Graph"
+  );
 
+  // Whenever container.title changes, dispatch to reducer
   useEffect(() => {
-    if (title !== container.title) {
-      setTitle(container.title)
-    }
-  }, [lockGrid])
+    dispatchTitle(container.title);
+  }, [container.title]);
 
   /**
    * Tracks a short string signature of the last emitted series to prevent unnecessary `setSeries` calls.
@@ -239,12 +246,12 @@ export default function GraphView({container}: { container: DashboardContainer<S
           <input
             type="text"
             value={ title }
-            onChange={ (e) => setTitle(e.target.value) }
+            onChange={ (e) => dispatchTitle(e.target.value) }
             disabled={ lockGrid }
             className={ cn("text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent ", !lockGrid && "border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400") }
           />
           { !lockGrid && (
-            <button onClick={ () => onTitleChange(container, title) }>
+            <button onClick={ () => updateContainerTitle(container, title) }>
               <Check className={ 'text-green-600' }></Check>
             </button>
           ) }

@@ -18,7 +18,7 @@ export type DotPath<T> = T extends object
                 : `${K}` | `${K}.${DotPath<T[K]>}`
             : `${K}`;
     }[keyof T & (string | number)]
-    : never;
+    : any;
 
 interface NestedSelectProps<T extends NestedObject> {
     data: T | T[] | string[] | number[] | boolean[];
