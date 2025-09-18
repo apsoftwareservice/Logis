@@ -6,17 +6,15 @@ import { useDashboard } from '@/context/DashboardContext'
 import { seekValueToEpochMs } from '@/lib/utils'
 
 export function Timeline() {
-  const [ time, setTime ] = useState<number>()
-  const {setCurrentTimestamp, timeframe, clips, markers} = useDashboard()
+  const {setCurrentTimestamp, timeframe, clips, markers, currentTimestamp} = useDashboard()
 
   return (
     <div className="p-4 bg-gradient-to-t from-gray-800 to-gray-800/0">
       <TimelineSlider
         startDate={ timeframe.start }
         endDate={ timeframe.end ?? 1 }
-        currentTime={ time ?? timeframe.start }
+        currentTime={ currentTimestamp ?? timeframe.start }
         onSeek={ (value) => {
-          setTime(value)
           const ms = seekValueToEpochMs(value, timeframe.start, timeframe.end)
           setCurrentTimestamp(Math.floor(ms))
         } }

@@ -1,5 +1,14 @@
 "use client"
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import React, {
+  createContext,
+  MutableRefObject,
+  RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState
+} from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/parsers/engine'
 import { detectFileFormat, FileFormat } from '@/parsers/logs/detectFileFormat'
 import { InputSource } from '@/parsers/logs/InputSource'
@@ -12,7 +21,7 @@ import { Layout } from 'react-grid-layout'
 import { discoverKeys, getNestedValue, toMs } from '@/lib/utils'
 
 type DashboardContextType = {
-  logIndex?: EventTypeIndex<unknown>
+  index?: RefObject<EventTypeIndex<unknown> | null>
   timeframe: { start: number, end: number }
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
@@ -35,6 +44,8 @@ type DashboardContextType = {
   handleOnSearch: (value: string) => void
   updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
+
+  startEngineWithSource: (source: InputSource, follow: boolean) => Promise<void>
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -49,6 +60,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
+  const [dateKey, setDateKey] = useState<string>('')
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
@@ -59,7 +71,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     // { id: "D", start: 80, end: 110, track: 1, label: "Overlay", color: "#fecaca" }]
   )
   const [ markers, setMarkers ] = useState<Marker[]>([])
-  const [ logIndex, setLogIndex ] = useState<EventTypeIndex>()
+  const index = useRef<EventTypeIndex>(null)
   const engine = useRef<TimelineEngine>(null)
   const [ timeframe, setTimeframe ] = useState<{ start: number, end: number }>({start: 0, end: 1})
 
@@ -123,18 +135,35 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
           }
       }
 
-      // start the source — expect it to call `onEvents` with an array of LogEvent
-      await source.start(async (events) => {
-        if (!events || events.length === 0) {
-          console.warn("no events from input source", source.name)
-          return
-        }
+      await startEngineWithSource(source, false)
+    } catch (error) {
+      toast.error(`${ error }`)
+    }
+  }
 
-        const index = EventTypeIndex.fromSortedBatch(events)
-        engine.current = new TimelineEngine(index)
-        setLogIndex(index)
+  async function startEngineWithSource(source: InputSource, follow: boolean) {
+    await source.start(async (events) => {
+      if (!events || events.length === 0) {
+        console.warn("no events from input source", source.name)
+        return
+      }
+
+      if (engine.current) {
+        const lastVal = getNestedValue(events[events.length - 1], dateKey)
+        const end = toMs(lastVal)
+
+        if (end !== null) {
+          setTimeframe({start: timeframe.start, end})
+        } else {
+          toast.error('Failed reading logs timestamp')
+        }
+      } else {
+        index.current = EventTypeIndex.fromSortedBatch(events)
+        engine.current = new TimelineEngine(index.current)
         const {dateKey} = discoverKeys(events[0])
+
         if (dateKey) {
+          setDateKey(dateKey)
           const firstVal = getNestedValue(events[0], dateKey)
           const lastVal = getNestedValue(events[events.length - 1], dateKey)
           const start = toMs(firstVal)
@@ -146,22 +175,19 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
             toast.error('Failed reading logs timestamp')
           }
         }
-      })
-
-    } catch (error) {
-      toast.error(`${ error }`)
-    }
+      }
+    })
   }
 
   function handleOnSearch(value: string) {
     let buckets = []
 
-    const bucket = logIndex?.getBucket(value)
+    const bucket = index.current?.getBucket(value)
 
     if (bucket) {
       buckets = [ bucket ]
     } else {
-      buckets = logIndex?.getBucketsIncludingType(value) ?? []
+      buckets = index.current?.getBucketsIncludingType(value) ?? []
     }
 
     const markers: Marker[] = buckets
@@ -216,7 +242,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         timeframe,
         registerObserver,
         parseLogFile,
-        logIndex,
+        index,
         handleOnSearch,
         clips,
         markers,
@@ -227,7 +253,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         lockGrid,
         setLockGrid,
         updateContainerTitle,
-        updateContainerSize
+        updateContainerSize,
+        startEngineWithSource
       } }
     >
       { children }

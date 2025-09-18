@@ -17,7 +17,7 @@ function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
 }
 
 export default function TableView({container}: { container: DashboardContainer<TableModel>}) {
-  const {registerObserver, logIndex, updateContainerTitle, lockGrid} = useDashboard()
+  const {registerObserver, index, updateContainerTitle, lockGrid} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
   const MotionRow = motion.tr
   const [ title, dispatchTitle ] = useReducer(
@@ -70,9 +70,9 @@ export default function TableView({container}: { container: DashboardContainer<T
         </div>
 
         <div className="flex items-start w-full gap-3 sm:justify-end">
-          { logIndex && (
-            <TableConfigurationPopover logIndex={ logIndex } container={ container } onChange={ (event) => {
-              registerObserver(eventObserver(event, logIndex))
+          { index?.current && (
+            <TableConfigurationPopover index={ index.current } container={ container } onChange={ (event) => {
+              registerObserver(eventObserver(event, index.current!))
             } }/>
           ) }
         </div>

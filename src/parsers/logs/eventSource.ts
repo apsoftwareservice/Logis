@@ -14,7 +14,10 @@ export function createEventSourceInput(url: string): InputSource {
       es = new EventSource(url);
       es.onmessage = (ev) => {
         try {
-          const payload = JSON.parse(ev.data) as LogEvent | LogEvent[];
+          const payload = JSON.parse(ev.data) as { type: string, data: any };
+          if (!payload?.data) {
+            return
+          }
           if (Array.isArray(payload)) onEvents(payload);
           else onEvents([payload]);
         } catch (err) {

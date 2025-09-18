@@ -35,37 +35,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __values = (this && this.__values) || function(o) {
-    var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
-    if (m) return m.call(o);
-    if (o && typeof o.length === "number") return {
-        next: function () {
-            if (o && i >= o.length) o = void 0;
-            return { value: o && o[i++], done: !o };
-        }
-    };
-    throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
-};
-var __read = (this && this.__read) || function (o, n) {
-    var m = typeof Symbol === "function" && o[Symbol.iterator];
-    if (!m) return o;
-    var i = m.call(o), r, ar = [], e;
-    try {
-        while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-    }
-    catch (error) { e = { error: error }; }
-    finally {
-        try {
-            if (r && !r.done && (m = i["return"])) m.call(i);
-        }
-        finally { if (e) throw e.error; }
-    }
-    return ar;
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 // ws-server.ts
 var http_1 = require("http");
-var ws_1 = require("ws");
 function hashToken(raw) {
     return __awaiter(this, void 0, void 0, function () {
         var data, digest, bytes, hex, i, h;
@@ -95,201 +67,161 @@ function generateToken() {
     // Fallback: random base36 string
     return (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20);
 }
-if (!global.__wsState) {
-    global.__wsState = {
-        clients: new Set(),
+if (!global.__esState) {
+    global.__esState = {
         stringToToken: new Map(),
         stringToRawToken: new Map(),
-        tokenToSocket: new Map(),
+        tokenToStream: new Map(),
     };
 }
-var state = global.__wsState;
+var state = global.__esState;
 // Create HTTP server (so we can also handle register & POST endpoints)
 var server = (0, http_1.createServer)(function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var url, body_1, body_2;
-    return __generator(this, function (_a) {
-        if (!req.url)
-            return [2 /*return*/];
-        url = new URL(req.url, "http://".concat(req.headers.host));
-        // Register endpoint: /register?key=abc
-        if (req.method === "POST" && url.pathname === "/register") {
-            body_1 = "";
-            req.on("data", function (chunk) { return (body_1 += chunk); });
-            req.on("end", function () { return __awaiter(void 0, void 0, void 0, function () {
-                var key, existing, token, tokenHash, _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            _b.trys.push([0, 2, , 3]);
-                            key = JSON.parse(body_1).key;
-                            if (!key || typeof key !== "string") {
-                                res.writeHead(400);
-                                res.end(JSON.stringify({ error: "Missing or invalid 'key'" }));
-                                return [2 /*return*/];
-                            }
-                            existing = state.stringToRawToken.get(key);
-                            if (existing) {
-                                res.writeHead(200, { "Content-Type": "application/json" });
-                                res.end(JSON.stringify({ token: existing, reused: true }));
-                                return [2 /*return*/];
-                            }
-                            token = generateToken();
-                            return [4 /*yield*/, hashToken(token)];
-                        case 1:
-                            tokenHash = _b.sent();
-                            state.stringToToken.set(key, tokenHash);
-                            state.stringToRawToken.set(key, token);
-                            res.writeHead(200, { "Content-Type": "application/json" });
-                            res.end(JSON.stringify({ token: token, reused: false }));
-                            return [3 /*break*/, 3];
-                        case 2:
-                            _a = _b.sent();
-                            res.writeHead(400);
-                            res.end(JSON.stringify({ error: "Invalid JSON" }));
-                            return [3 /*break*/, 3];
-                        case 3: return [2 /*return*/];
-                    }
-                });
-            }); });
-            return [2 /*return*/];
-        }
-        // Log send endpoint: /send?token=xxx
-        if (req.method === "POST" && url.pathname === "/send") {
-            body_2 = "";
-            req.on("data", function (chunk) { return (body_2 += chunk); });
-            req.on("end", function () { return __awaiter(void 0, void 0, void 0, function () {
-                var token, key, tokenHash, ws, payload;
-                var _a;
-                return __generator(this, function (_b) {
-                    switch (_b.label) {
-                        case 0:
-                            token = url.searchParams.get("token");
-                            key = url.searchParams.get("key");
-                            tokenHash = null;
-                            if (!token) return [3 /*break*/, 2];
-                            return [4 /*yield*/, hashToken(token)];
-                        case 1:
-                            tokenHash = _b.sent();
-                            return [3 /*break*/, 3];
-                        case 2:
-                            if (key)
-                                tokenHash = (_a = state.stringToToken.get(key)) !== null && _a !== void 0 ? _a : null;
-                            _b.label = 3;
-                        case 3:
-                            if (!tokenHash) {
-                                res.writeHead(401);
-                                res.end(JSON.stringify({ error: "Missing or invalid token/key" }));
-                                return [2 /*return*/];
-                            }
-                            ws = state.tokenToSocket.get(tokenHash);
-                            payload = JSON.stringify({ type: "log", data: body_2 ? JSON.parse(body_2) : {} });
-                            if (ws) {
-                                try {
-                                    ws.send(payload);
-                                    res.writeHead(200, { "Content-Type": "application/json" });
-                                    res.end(JSON.stringify({ ok: true, delivered: true }));
-                                }
-                                catch (_c) {
-                                    ws.close();
-                                    state.clients.delete(ws);
-                                    state.tokenToSocket.delete(tokenHash);
-                                    res.writeHead(200, { "Content-Type": "application/json" });
-                                    res.end(JSON.stringify({ ok: true, delivered: false, reason: "socket_error" }));
-                                }
-                            }
-                            else {
-                                res.writeHead(200, { "Content-Type": "application/json" });
-                                res.end(JSON.stringify({ ok: true, delivered: false, reason: "no_active_socket" }));
-                            }
-                            return [2 /*return*/];
-                    }
-                });
-            }); });
-            return [2 /*return*/];
-        }
-        res.writeHead(404);
-        res.end("Not found");
-        return [2 /*return*/];
-    });
-}); });
-// Attach WebSocket server
-var wss = new ws_1.WebSocketServer({ server: server });
-wss.on("connection", function (socket, req) { return __awaiter(void 0, void 0, void 0, function () {
-    var url, token, tokenHash, authorized, alive, interval;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
+    var url, body_1, token, key, tokenHash_1, body_2;
+    var _a;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                url = new URL(req.url || "", "http://".concat(req.headers.host));
-                token = url.searchParams.get("token");
-                if (!token) {
-                    socket.close(1008, "Missing token");
+                // Add CORS headers
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+                res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+                // Handle preflight
+                if (req.method === 'OPTIONS') {
+                    res.writeHead(204);
+                    res.end();
                     return [2 /*return*/];
                 }
+                if (!req.url)
+                    return [2 /*return*/];
+                url = new URL(req.url, "http://".concat(req.headers.host));
+                // Register endpoint: /register?key=abc
+                if (req.method === "POST" && url.pathname === "/register") {
+                    body_1 = "";
+                    req.on("data", function (chunk) { return (body_1 += chunk); });
+                    req.on("end", function () { return __awaiter(void 0, void 0, void 0, function () {
+                        var key, existing, token, tokenHash, _a;
+                        return __generator(this, function (_b) {
+                            switch (_b.label) {
+                                case 0:
+                                    _b.trys.push([0, 2, , 3]);
+                                    key = JSON.parse(body_1).key;
+                                    if (!key || typeof key !== "string") {
+                                        res.writeHead(400);
+                                        res.end(JSON.stringify({ error: "Missing or invalid 'key'" }));
+                                        return [2 /*return*/];
+                                    }
+                                    existing = state.stringToRawToken.get(key);
+                                    if (existing) {
+                                        res.writeHead(200, { "Content-Type": "application/json" });
+                                        res.end(JSON.stringify({ token: existing, reused: true }));
+                                        return [2 /*return*/];
+                                    }
+                                    token = generateToken();
+                                    return [4 /*yield*/, hashToken(token)];
+                                case 1:
+                                    tokenHash = _b.sent();
+                                    state.stringToToken.set(key, tokenHash);
+                                    state.stringToRawToken.set(key, token);
+                                    res.writeHead(200, { "Content-Type": "application/json" });
+                                    res.end(JSON.stringify({ token: token, reused: false }));
+                                    return [3 /*break*/, 3];
+                                case 2:
+                                    _a = _b.sent();
+                                    res.writeHead(400);
+                                    res.end(JSON.stringify({ error: "Invalid JSON" }));
+                                    return [3 /*break*/, 3];
+                                case 3: return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                    return [2 /*return*/];
+                }
+                if (!(req.method === "GET" && url.pathname === "/stream")) return [3 /*break*/, 4];
+                token = url.searchParams.get("token");
+                key = url.searchParams.get("key");
+                tokenHash_1 = null;
+                if (!token) return [3 /*break*/, 2];
                 return [4 /*yield*/, hashToken(token)];
             case 1:
-                tokenHash = _a.sent();
-                authorized = Array.from(state.stringToToken.values()).includes(tokenHash);
-                if (!authorized) {
-                    socket.close(1008, "Invalid token");
+                tokenHash_1 = _b.sent();
+                return [3 /*break*/, 3];
+            case 2:
+                if (key)
+                    tokenHash_1 = (_a = state.stringToToken.get(key)) !== null && _a !== void 0 ? _a : null;
+                _b.label = 3;
+            case 3:
+                if (!tokenHash_1) {
+                    res.writeHead(401);
+                    res.end(JSON.stringify({ error: "Missing or invalid 'key'" }));
                     return [2 /*return*/];
                 }
-                state.clients.add(socket);
-                state.tokenToSocket.set(tokenHash, socket);
-                alive = true;
-                interval = setInterval(function () {
-                    if (!alive) {
-                        socket.terminate();
-                        clearInterval(interval);
-                        return;
-                    }
-                    alive = false;
-                    socket.ping();
-                }, 30000);
-                socket.on("pong", function () {
-                    alive = true;
+                // Set headers for EventSource (SSE)
+                res.writeHead(200, {
+                    "Content-Type": "text/event-stream",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
                 });
-                socket.on("message", function (msg) {
-                    alive = true;
-                    console.log("Client message:", msg.toString());
+                res.write("data: {\"type\": \"connected\", \"token\": \"".concat(tokenHash_1, "\"}\n\n"));
+                // Store the stream in the map
+                state.tokenToStream.set(tokenHash_1, res);
+                req.on("close", function () {
+                    state.tokenToStream.delete(tokenHash_1);
+                    res.end();
                 });
-                socket.on("close", function () {
-                    var e_1, _a;
-                    clearInterval(interval);
-                    state.clients.delete(socket);
-                    try {
-                        for (var _b = __values(state.tokenToSocket.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                            var _d = __read(_c.value, 2), tk = _d[0], ws = _d[1];
-                            if (ws === socket)
-                                state.tokenToSocket.delete(tk);
-                        }
-                    }
-                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
-                    finally {
-                        try {
-                            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                        }
-                        finally { if (e_1) throw e_1.error; }
-                    }
-                });
-                socket.on("error", function () {
-                    var e_2, _a;
-                    clearInterval(interval);
-                    state.clients.delete(socket);
-                    try {
-                        for (var _b = __values(state.tokenToSocket.entries()), _c = _b.next(); !_c.done; _c = _b.next()) {
-                            var _d = __read(_c.value, 2), tk = _d[0], ws = _d[1];
-                            if (ws === socket)
-                                state.tokenToSocket.delete(tk);
-                        }
-                    }
-                    catch (e_2_1) { e_2 = { error: e_2_1 }; }
-                    finally {
-                        try {
-                            if (_c && !_c.done && (_a = _b.return)) _a.call(_b);
-                        }
-                        finally { if (e_2) throw e_2.error; }
-                    }
-                });
+                return [2 /*return*/];
+            case 4:
+                // Log send endpoint: /send?token=xxx
+                if (req.method === "POST" && url.pathname === "/log") {
+                    body_2 = "";
+                    req.on("data", function (chunk) { return (body_2 += chunk); });
+                    req.on("end", function () { return __awaiter(void 0, void 0, void 0, function () {
+                        var token, key, delivered, tokenHash, stream, payload;
+                        var _a;
+                        return __generator(this, function (_b) {
+                            switch (_b.label) {
+                                case 0:
+                                    token = url.searchParams.get("token");
+                                    key = url.searchParams.get("key");
+                                    delivered = false;
+                                    tokenHash = null;
+                                    if (!token) return [3 /*break*/, 2];
+                                    return [4 /*yield*/, hashToken(token)];
+                                case 1:
+                                    tokenHash = _b.sent();
+                                    return [3 /*break*/, 3];
+                                case 2:
+                                    if (key)
+                                        tokenHash = (_a = state.stringToToken.get(key)) !== null && _a !== void 0 ? _a : null;
+                                    _b.label = 3;
+                                case 3:
+                                    if (!tokenHash) {
+                                        res.writeHead(401);
+                                        res.end(JSON.stringify({ error: "Missing or invalid token/key" }));
+                                        return [2 /*return*/];
+                                    }
+                                    stream = state.tokenToStream.get(tokenHash);
+                                    payload = JSON.stringify({ type: "log", data: body_2 ? JSON.parse(body_2) : {} });
+                                    console.log(payload);
+                                    if (stream) {
+                                        try {
+                                            stream.write("data: ".concat(payload, "\n\n"));
+                                            delivered = true;
+                                        }
+                                        catch (_c) {
+                                            state.tokenToStream.delete(tokenHash);
+                                        }
+                                    }
+                                    res.writeHead(200, { "Content-Type": "application/json" });
+                                    res.end(JSON.stringify({ ok: true, delivered: delivered, reason: "no_active_socket" }));
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); });
+                    return [2 /*return*/];
+                }
+                res.writeHead(404);
+                res.end("Not found");
                 return [2 /*return*/];
         }
     });
@@ -297,5 +229,5 @@ wss.on("connection", function (socket, req) { return __awaiter(void 0, void 0, v
 // Start server
 var PORT = 4000;
 server.listen(PORT, function () {
-    console.log("WebSocket server running at http://localhost:".concat(PORT));
+    console.log("Server running at http://localhost:".concat(PORT));
 });

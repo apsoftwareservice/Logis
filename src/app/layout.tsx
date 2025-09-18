@@ -18,13 +18,11 @@ export default function RootLayout({children}: Readonly<{ children: React.ReactN
     <html lang="en">
     <body className={ `${ outfit.className } dark:bg-gray-900` }>
     <ThemeProvider>
-      <WebSocketContextProvider>
-        <SidebarProvider>
-          <DashboardProvider>
-            { children }
-          </DashboardProvider>
-        </SidebarProvider>
-      </WebSocketContextProvider>
+      <SidebarProvider>
+        <DashboardProvider>
+          { children }
+        </DashboardProvider>
+      </SidebarProvider>
     </ThemeProvider>
     <ToastContainer
       position="top-center"

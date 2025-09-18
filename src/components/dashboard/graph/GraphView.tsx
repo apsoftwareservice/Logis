@@ -82,7 +82,7 @@ function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
  * points and the series is updated only when needed.
  */
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
-  const {logIndex, registerObserver, updateContainerTitle, lockGrid} = useDashboard()
+  const {index, registerObserver, updateContainerTitle, lockGrid} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
   const [ title, dispatchTitle ] = useReducer(
     titleReducer,
@@ -257,9 +257,9 @@ export default function GraphView({container}: { container: DashboardContainer<S
           ) }
         </div>
         <div className="flex items-start w-full gap-3 sm:justify-end">
-          { logIndex && (
-            <GraphConfigurationPopover logIndex={ logIndex } container={ container } onChange={ (event) => {
-              registerObserver(eventObserver(event, logIndex))
+          { index?.current && (
+            <GraphConfigurationPopover index={ index.current } container={ container } onChange={ (event) => {
+              registerObserver(eventObserver(event, index.current!))
             } }/>
           ) }
         </div>

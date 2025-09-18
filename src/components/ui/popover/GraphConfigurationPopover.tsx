@@ -11,12 +11,12 @@ import { toast } from 'react-toastify'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 
 export interface GraphConfigurationPopoverProps {
-  logIndex: EventTypeIndex
+  index: EventTypeIndex
   container: DashboardContainer<StatisticsModel>
   onChange: (event: string, xAxis: string, yAxis: string) => void
 }
 
-export function GraphConfigurationPopover({logIndex, container, onChange}: GraphConfigurationPopoverProps) {
+export function GraphConfigurationPopover({index, container, onChange}: GraphConfigurationPopoverProps) {
   const {setContainers} = useDashboard()
   const [ xAxisOptions, setXAxisOptions ] = useState<NestedObject>()
   const [ yAxisOptions, setYAxisOptions ] = useState<NestedObject>()
@@ -27,7 +27,7 @@ export function GraphConfigurationPopover({logIndex, container, onChange}: Graph
   const [ selectedYAxisParameterName, setSelectedYAxisParameterName ] = useState<string>(container.data.yAxisParameterName)
 
   useEffect(() => {
-    const bucket = logIndex.getBucket(event)
+    const bucket = index.getBucket(event)
 
     if (bucket) {
       const data = bucket?.first()
@@ -39,7 +39,7 @@ export function GraphConfigurationPopover({logIndex, container, onChange}: Graph
         toast.warning('Event has not data')
       }
     }
-  }, [ logIndex, event ])
+  }, [ index, event ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -65,7 +65,7 @@ export function GraphConfigurationPopover({logIndex, container, onChange}: Graph
                 <SelectValue placeholder="Select event"/>
               </SelectTrigger>
               <SelectContent className={ 'bg-white' }>
-                { (logIndex?.listTypes() ?? []).map((event, index) => (
+                { (index?.listTypes() ?? []).map((event, index) => (
                   <SelectItem key={ String(event) + index } value={ String(event) }>
                     { String(event) }
                   </SelectItem>

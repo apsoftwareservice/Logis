@@ -12,12 +12,12 @@ import NestedSelect, { NestedObject } from '../nestedSelect'
 import Badge from '@/components/ui/badge/Badge'
 
 export interface TableConfigurationPopoverProps {
-  logIndex: EventTypeIndex
+  index: EventTypeIndex
   container: DashboardContainer<TableModel>
   onChange: (event: string, selectedColumns: string[]) => void
 }
 
-export function TableConfigurationPopover({logIndex, container, onChange}: TableConfigurationPopoverProps) {
+export function TableConfigurationPopover({index, container, onChange}: TableConfigurationPopoverProps) {
   const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
 
@@ -27,7 +27,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
   const [ dragIndex, setDragIndex ] = useState<number | null>(null)
 
   useEffect(() => {
-    const bucket = logIndex.getBucket(event)
+    const bucket = index.getBucket(event)
 
     if (bucket) {
       const data = bucket?.first()
@@ -38,7 +38,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
         toast.warning('Event has not data')
       }
     }
-  }, [ logIndex, event ])
+  }, [ index, event ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -72,7 +72,7 @@ export function TableConfigurationPopover({logIndex, container, onChange}: Table
                 <SelectValue placeholder="Select event"/>
               </SelectTrigger>
               <SelectContent className={ 'bg-white' }>
-                { (logIndex?.listTypes() ?? []).map((event, index) => (
+                { (index?.listTypes() ?? []).map((event, index) => (
                   <SelectItem key={ String(event) + index } value={ String(event) }>
                     { String(event) }
                   </SelectItem>

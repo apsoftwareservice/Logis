@@ -1,6 +1,5 @@
 // ws-server.ts
 import { createServer } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 
 async function hashToken(raw: string): Promise<string> {
     const data = new TextEncoder().encode(raw)
@@ -23,32 +22,42 @@ function generateToken() {
     return (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20)
 }
 
-interface WebsocketState {
-    clients: Set<WebSocket>;
+interface EventSourceState {
     stringToToken: Map<string, string>;
     stringToRawToken: Map<string, string>;
-    tokenToSocket: Map<string, WebSocket>;
+    tokenToStream: Map<string, NodeJS.WritableStream>;
 }
 
 // Global state (shared across imports)
 declare global {
     // eslint-disable-next-line no-var
-    var __wsState: WebsocketState | undefined;
+    var __esState: EventSourceState | undefined;
 }
 
-if (!global.__wsState) {
-    global.__wsState = {
-        clients: new Set(),
+if (!global.__esState) {
+    global.__esState = {
         stringToToken: new Map(),
         stringToRawToken: new Map(),
-        tokenToSocket: new Map(),
+        tokenToStream: new Map(),
     };
 }
 
-const state = global.__wsState!;
+const state = global.__esState!;
 
 // Create HTTP server (so we can also handle register & POST endpoints)
 const server = createServer(async (req, res) => {
+    // Add CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Handle preflight
+    if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+    }
+
     if (!req.url) return;
 
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -91,13 +100,49 @@ const server = createServer(async (req, res) => {
         return;
     }
 
+    // Register endpoint: /stream?token=abc
+    if (req.method === "GET" && url.pathname === "/stream") {
+        const token = url.searchParams.get("token");
+        const key = url.searchParams.get("key");
+        let tokenHash: string | null = null;
+
+        if (token) tokenHash = await hashToken(token);
+        else if (key) tokenHash = state.stringToToken.get(key) ?? null;
+
+        if (!tokenHash) {
+            res.writeHead(401);
+            res.end(JSON.stringify({ error: "Missing or invalid 'key'" }));
+            return;
+        }
+
+        // Set headers for EventSource (SSE)
+        res.writeHead(200, {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        });
+
+        res.write(`data: {"type": "connected", "token": "${tokenHash}"}\n\n`);
+
+        // Store the stream in the map
+        state.tokenToStream.set(tokenHash, res);
+
+        req.on("close", () => {
+           state.tokenToStream.delete(tokenHash);
+           res.end();
+        });
+
+        return;
+    }
+
     // Log send endpoint: /send?token=xxx
-    if (req.method === "POST" && url.pathname === "/send") {
+    if (req.method === "POST" && url.pathname === "/log") {
         let body = "";
         req.on("data", (chunk) => (body += chunk));
         req.on("end", async () => {
             const token = url.searchParams.get("token");
             const key = url.searchParams.get("key");
+            let delivered = false
 
             let tokenHash: string | null = null;
             if (token) tokenHash = await hashToken(token);
@@ -109,25 +154,21 @@ const server = createServer(async (req, res) => {
                 return;
             }
 
-            const ws = state.tokenToSocket.get(tokenHash);
+            const stream = state.tokenToStream.get(tokenHash);
             const payload = JSON.stringify({ type: "log", data: body ? JSON.parse(body) : {} });
+            console.log(payload);
 
-            if (ws) {
+            if (stream) {
                 try {
-                    ws.send(payload);
-                    res.writeHead(200, { "Content-Type": "application/json" });
-                    res.end(JSON.stringify({ ok: true, delivered: true }));
+                    stream.write(`data: ${payload}\n\n`)
+                    delivered = true;
                 } catch {
-                    ws.close();
-                    state.clients.delete(ws);
-                    state.tokenToSocket.delete(tokenHash);
-                    res.writeHead(200, { "Content-Type": "application/json" });
-                    res.end(JSON.stringify({ ok: true, delivered: false, reason: "socket_error" }));
+                    state.tokenToStream.delete(tokenHash);
                 }
-            } else {
-                res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ ok: true, delivered: false, reason: "no_active_socket" }));
             }
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: true, delivered: delivered, reason: "no_active_socket" }));
         });
         return;
     }
@@ -136,67 +177,8 @@ const server = createServer(async (req, res) => {
     res.end("Not found");
 });
 
-// Attach WebSocket server
-const wss = new WebSocketServer({ server });
-
-wss.on("connection", async (socket, req) => {
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const token = url.searchParams.get("token");
-    if (!token) {
-        socket.close(1008, "Missing token");
-        return;
-    }
-
-    const tokenHash = await hashToken(token);
-    const authorized = Array.from(state.stringToToken.values()).includes(tokenHash);
-
-    if (!authorized) {
-        socket.close(1008, "Invalid token");
-        return;
-    }
-
-    state.clients.add(socket);
-    state.tokenToSocket.set(tokenHash, socket);
-
-    let alive = true;
-    const interval = setInterval(() => {
-        if (!alive) {
-            socket.terminate();
-            clearInterval(interval);
-            return;
-        }
-        alive = false;
-        socket.ping();
-    }, 30_000);
-
-    socket.on("pong", () => {
-        alive = true;
-    });
-
-    socket.on("message", (msg) => {
-        alive = true;
-        console.log("Client message:", msg.toString());
-    });
-
-    socket.on("close", () => {
-        clearInterval(interval);
-        state.clients.delete(socket);
-        for (const [tk, ws] of state.tokenToSocket.entries()) {
-            if (ws === socket) state.tokenToSocket.delete(tk);
-        }
-    });
-
-    socket.on("error", () => {
-        clearInterval(interval);
-        state.clients.delete(socket);
-        for (const [tk, ws] of state.tokenToSocket.entries()) {
-            if (ws === socket) state.tokenToSocket.delete(tk);
-        }
-    });
-});
-
 // Start server
 const PORT = 4000;
 server.listen(PORT, () => {
-    console.log(`WebSocket server running at http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });

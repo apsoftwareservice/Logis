@@ -12,7 +12,7 @@ import DropZone from '@/components/ui/dropdown/DropZone'
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
 export default function Dashboard() {
-  const {containers, lockGrid, logIndex, updateContainerSize, parseLogFile} = useDashboard()
+  const {containers, lockGrid, index, updateContainerSize, parseLogFile} = useDashboard()
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -52,7 +52,7 @@ export default function Dashboard() {
           }
         }) }
       </ResponsiveGridLayout>
-      { logIndex ? (
+      { index ? (
         <div className="fixed bottom-0 left-0 w-full z-50">
           <Timeline/>
         </div>

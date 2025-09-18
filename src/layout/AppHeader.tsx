@@ -10,10 +10,11 @@ import Search from '@/components/header/Search'
 import { SquarePlus } from 'lucide-react'
 import AddContainer from '@/components/header/AddContainer'
 import GridController from '@/components/header/GridController'
+import LiveSession from '@/components/header/LiveSession'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
-  const { parseLogFile, logIndex, handleOnSearch } = useDashboard()
+  const { parseLogFile, index, handleOnSearch } = useDashboard()
   const {isMobileOpen, toggleSidebar, toggleMobileSidebar} = useSidebar()
 
   const handleToggle = () => {
@@ -97,7 +98,7 @@ const AppHeader: React.FC = () => {
           </Link>
 
           <div className="hidden lg:block">
-            <Search onSearch={handleOnSearch} onOptionClick={handleOnSearch} options={logIndex?.listTypes() ?? []}/>
+            <Search onSearch={handleOnSearch} onOptionClick={handleOnSearch} options={index?.current?.listTypes() ?? []}/>
           </div>
         </div>
         <div
@@ -106,6 +107,7 @@ const AppHeader: React.FC = () => {
           } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none` }
         >
           <div className="flex items-center gap-2 2xsm:gap-3">
+            <LiveSession/>
             <GridController/>
             <ThemeToggleButton/>
             <UploadFile onFileSelectAction={parseLogFile}/>

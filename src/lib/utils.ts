@@ -7,7 +7,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function capitalize(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  if (str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+  return str
 }
 
 export function parseNumeric(value: unknown): number | null {
