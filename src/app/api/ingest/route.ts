@@ -4,13 +4,26 @@ import { NextRequest } from "next/server"
 export const runtime = "edge" // required for WebSocketPair
 export const dynamic = "force-dynamic"
 
-// Very basic in-memory client registry (per-edge-instance)
-const clients = new Set<WebSocket>()
-// Key registration and targeted delivery
-const stringToToken = new Map<string, string>()
-// Optional: store raw token to make registration idempotent (dev convenience)
-const stringToRawToken = new Map<string, string>()
-const tokenToSocket = new Map<string, WebSocket>()
+declare global {
+   
+  var __wsState: | undefined;
+}
+
+if (!globalThis.__wsState) {
+  globalThis.__wsState = {
+    clients: new Set<WebSocket>(),
+    stringToToken: new Map<string, string>(),
+    stringToRawToken: new Map<string, string>(),
+    tokenToSocket: new Map<string, WebSocket>(),
+  } as const;
+}
+
+const state = globalThis.__wsState as {
+  clients: Set<WebSocket>;
+  stringToToken: Map<string, string>;
+  stringToRawToken: Map<string, string>;
+  tokenToSocket: Map<string, WebSocket>;
+};
 
 async function hashToken(raw: string): Promise<string> {
   const data = new TextEncoder().encode(raw)
@@ -34,6 +47,7 @@ function generateToken() {
 }
 
 export async function GET(req: NextRequest) {
+  console.log('asdasda')
   const token = req.nextUrl.searchParams.get("token")
   if (!token) return new Response("Missing token", {status: 401})
 
@@ -45,8 +59,8 @@ export async function GET(req: NextRequest) {
   const {0: client, 1: server} = new WebSocketPair()
   server.accept()
 
-  // Simple auth guard (replace with real check)
-  const authorized = !!tokenHash // set to result of your DB/KV lookup
+  // Authorized only if this token was issued via POST register (exists in our registry)
+  const authorized = Array.from(state.stringToToken.values()).includes(tokenHash)
   if (!authorized) {
     try {
       server.close(1008, "Invalid token")
@@ -56,10 +70,10 @@ export async function GET(req: NextRequest) {
   }
 
   // Register client
-  clients.add(server)
+  state.clients.add(server)
 
   // Bind this socket to the provided token for targeted sends
-  tokenToSocket.set(tokenHash, server)
+  state.tokenToSocket.set(tokenHash, server)
 
   // Optional: heartbeat to detect dead connections
   let alive = true
@@ -81,18 +95,18 @@ export async function GET(req: NextRequest) {
 
   server.addEventListener("close", () => {
     clearInterval(ping)
-    clients.delete(server)
+    state.clients.delete(server)
     // Unbind any token pointing to this socket
-    for (const [ tk, ws ] of tokenToSocket.entries()) {
-      if (ws === server) tokenToSocket.delete(tk)
+    for (const [ tk, ws ] of state.tokenToSocket.entries()) {
+      if (ws === server) state.tokenToSocket.delete(tk)
     }
   })
   server.addEventListener("error", () => {
     clearInterval(ping)
-    clients.delete(server)
+    state.clients.delete(server)
     // Unbind any token pointing to this socket
-    for (const [ tk, ws ] of tokenToSocket.entries()) {
-      if (ws === server) tokenToSocket.delete(tk)
+    for (const [ tk, ws ] of state.tokenToSocket.entries()) {
+      if (ws === server) state.tokenToSocket.delete(tk)
     }
   })
 
@@ -112,7 +126,7 @@ export async function POST(req: NextRequest) {
     }
 
     // If this key was already registered, return the same token (idempotent)
-    const existing = stringToRawToken.get(key)
+    const existing = state.stringToRawToken.get(key)
     if (existing) {
       return Response.json({token: existing, reused: true})
     }
@@ -120,8 +134,8 @@ export async function POST(req: NextRequest) {
     // Otherwise, create and persist a new token
     const token = generateToken()
     const tokenHash = await hashToken(token)
-    stringToToken.set(key, tokenHash)
-    stringToRawToken.set(key, token)
+    state.stringToToken.set(key, tokenHash)
+    state.stringToRawToken.set(key, token)
 
     return Response.json({token, reused: false})
   }
@@ -135,7 +149,7 @@ export async function POST(req: NextRequest) {
   if (tokenParam) {
     tokenHash = await hashToken(tokenParam)
   } else if (keyParam) {
-    tokenHash = stringToToken.get(keyParam) ?? null
+    tokenHash = state.stringToToken.get(keyParam) ?? null
   }
 
   if (!tokenHash) {
@@ -149,7 +163,7 @@ export async function POST(req: NextRequest) {
   // TODO: persist body as you already planned
 
   // Targeted delivery: send only to the socket bound to this token
-  const ws = tokenToSocket.get(tokenHash)
+  const ws = state.tokenToSocket.get(tokenHash)
   const payload = JSON.stringify({type: "log", data: body})
 
   if (ws) {
@@ -161,9 +175,9 @@ export async function POST(req: NextRequest) {
         ws.close()
       } catch {
       }
-      clients.delete(ws)
+      state.clients.delete(ws)
       // remove broken binding
-      tokenToSocket.delete(tokenHash)
+      state.tokenToSocket.delete(tokenHash)
       return Response.json({ok: true, delivered: false, reason: "socket_error"})
     }
   } else {
