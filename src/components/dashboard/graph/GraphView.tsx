@@ -5,7 +5,7 @@ import { ApexOptions } from "apexcharts"
 import dynamic from "next/dynamic"
 import { GraphConfigurationPopover } from '@/components/ui/popover/GraphConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
-import { EventTypeIndex, Observer } from '@/parsers/engine'
+import { EventTypeIndex, Observer } from '@/core/engine'
 import { DashboardContainer, StatisticsModel } from '@/types/containers'
 import { cn, getNestedValue, parseNumeric } from '@/lib/utils'
 import { Check } from 'lucide-react'

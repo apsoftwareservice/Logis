@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react"
 
 import {Disc} from "lucide-react"
 import { useDashboard } from '@/context/DashboardContext'
-import {createEventSourceInput} from "@/parsers/logs/eventSource";
+import {createEventSourceInput} from "@/core/sources/eventSource";
 
 export default function LiveSession() {
   const {startEngineWithSource} = useDashboard()

@@ -1,4 +1,4 @@
-import type { LogEvent } from "@/parsers/engine";
+import type { LogEvent } from "@/core/engine"
 
 export type OnEvents = (events: LogEvent[]) => void;
 

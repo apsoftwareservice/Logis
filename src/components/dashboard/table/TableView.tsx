@@ -3,7 +3,7 @@
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../ui/table"
 import { useDashboard } from '@/context/DashboardContext'
 import { AnimatePresence, motion } from "framer-motion"
-import { EventTypeIndex, Observer } from '@/parsers/engine'
+import { EventTypeIndex, Observer } from '@/core/engine'
 import React, { useEffect, useReducer, useState } from 'react'
 import { capitalize, cn, getNestedValue } from '@/lib/utils'
 import { Check } from 'lucide-react'

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { EventTypeIndex } from '@/parsers/engine'
+import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { Settings } from 'lucide-react'
 import { DashboardContainer, StatisticsModel } from '@/types/containers'

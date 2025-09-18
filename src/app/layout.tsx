@@ -7,7 +7,6 @@ import { DashboardProvider } from '@/context/DashboardContext'
 import { Slide, ToastContainer } from 'react-toastify'
 import '/node_modules/react-grid-layout/css/styles.css'
 import '/node_modules/react-resizable/css/styles.css'
-import { WebSocketContextProvider } from '@/context/WebsocketContext'
 
 const outfit = Outfit({
   subsets: [ "latin" ]

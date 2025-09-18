@@ -1,19 +1,10 @@
 "use client"
-import React, {
-  createContext,
-  MutableRefObject,
-  RefObject,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState
-} from "react"
-import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/parsers/engine'
-import { detectFileFormat, FileFormat } from '@/parsers/logs/detectFileFormat'
-import { InputSource } from '@/parsers/logs/InputSource'
-import { createFullJsonFileSource } from '@/parsers/logs/fullJson'
-import { createNdjsonFileSource } from '@/parsers/logs/ndjson'
+import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState } from "react"
+import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/core/engine'
+import { detectFileFormat, FileFormat } from '@/core/parsers/detectFileFormat'
+import { InputSource } from '@/core/sources/InputSource'
+import { createFullJsonFileSource } from '@/core/parsers/fullJson'
+import { createNdjsonFileSource } from '@/core/parsers/ndjson'
 import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeRange/TimeLine.types'
 import { DashboardContainer } from '@/types/containers'
@@ -60,7 +51,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [dateKey, setDateKey] = useState<string>('')
+  const [ dateKey, setDateKey ] = useState<string>('')
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
@@ -93,7 +84,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   useEffect(() => {
     requestSeek(currentTimestamp)
-  }, [currentTimestamp, requestSeek])
+  }, [ currentTimestamp, requestSeek ])
 
   function registerObserver(observer: Observer) {
     engine.current?.register(observer)
