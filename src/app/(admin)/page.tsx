@@ -14,6 +14,7 @@ import DemographicCard from '@/components/dashboard/Containers/DemographicCard'
 import MonthlyTarget from '@/components/dashboard/Containers/MonthlyTarget'
 import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
 import cat from '@lottie/cat.json'
+import Logger from '@/components/dashboard/Containers/Logger'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -76,7 +77,6 @@ export default function Dashboard() {
                 case ContainerType.card:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
-                      {/* @ts-expect-error ignore */ }
                       <DemographicCard container={ container }/>
                     </div>
                   )
@@ -85,6 +85,12 @@ export default function Dashboard() {
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
                       <MonthlyTarget container={ container }/>
+                    </div>
+                  )
+                case ContainerType.logs:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      <Logger container={container}/>
                     </div>
                   )
                 default:

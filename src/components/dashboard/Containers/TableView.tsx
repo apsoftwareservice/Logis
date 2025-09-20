@@ -1,6 +1,6 @@
 "use client"
 
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../ui/table"
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { useDashboard } from '@/context/DashboardContext'
 import { AnimatePresence, motion } from "framer-motion"
 import { EventTypeIndex, Observer } from '@/core/engine'

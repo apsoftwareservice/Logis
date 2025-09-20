@@ -17,6 +17,8 @@ type DashboardContextType = {
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
 
+  logs: object[]
+
   lockGrid: boolean
   setLockGrid: React.Dispatch<React.SetStateAction<boolean>>
 
@@ -52,6 +54,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
+  const [logs, setLogs] = useState<object[]>([])
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
@@ -140,6 +143,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         return
       }
 
+      setLogs(prev => prev.concat([...events]))
+
       if (engine.current) {
         if (follow) {
           const lastVal = getNestedValue(events[events.length - 1], cachedDateKey.current)
@@ -163,6 +168,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
           if (start !== null && end !== null) {
             setTimeframe({start, end})
+            setCurrentTimestamp(start)
           } else {
             toast.error('Failed reading logs timestamp')
           }
@@ -251,7 +257,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         updateContainerTitle,
         updateContainerSize,
         startEngineWithSource,
-        removeContainer
+        removeContainer,
+        logs
       } }
     >
       { children }
