@@ -1,14 +1,14 @@
 "use client"
 
-import React, { useEffect, useReducer, useRef, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { ApexOptions } from "apexcharts"
 import dynamic from "next/dynamic"
 import { GraphConfigurationPopover } from '@/components/ui/popover/GraphConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import { DashboardContainer, StatisticsModel } from '@/types/containers'
-import { cn, getNestedValue, parseNumeric } from '@/lib/utils'
-import { Check } from 'lucide-react'
+import { getNestedValue, parseNumeric } from '@/lib/utils'
+import BaseView from '@/components/dashboard/BaseView'
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -68,11 +68,6 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
   return `${ yAxisName }|${ dataPoints.length }|${ lastPoint ? `${ lastPoint.x }:${ lastPoint.y }` : '' }`
 }
 
-function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
-  // If container.title is defined, use it, otherwise fallback
-  return nextContainerTitle ?? "Graph";
-}
-
 /**
  * StatisticsChart
  *
@@ -82,17 +77,8 @@ function titleReducer(_prev: string, nextContainerTitle: string | undefined) {
  * points and the series is updated only when needed.
  */
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
-  const {index, registerObserver, updateContainerTitle, lockGrid} = useDashboard()
+  const {index, registerObserver} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
-  const [ title, dispatchTitle ] = useReducer(
-    titleReducer,
-    container.title ?? "Graph"
-  );
-
-  // Whenever container.title changes, dispatch to reducer
-  useEffect(() => {
-    dispatchTitle(container.title);
-  }, [container.title]);
 
   /**
    * Tracks a short string signature of the last emitted series to prevent unnecessary `setSeries` calls.
@@ -123,7 +109,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     colors: [ "#465FFF", "#9CB9FF" ], // Define line colors
     chart: {
       fontFamily: "Outfit, sans-serif",
-      height: 310,
+      // height: 310,
       type: "line", // Set the chart type to 'line'
       toolbar: {
         show: true // Hide chart toolbar
@@ -239,33 +225,8 @@ export default function GraphView({container}: { container: DashboardContainer<S
   })
 
   return (
-    <div
-      className="h-full w-full overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] p-6">
-      <div className="flex flex-col gap-5 mb-4 sm:flex-row sm:justify-between">
-        <div className={ 'flex gap-2 items-center align-middle' }>
-          <input
-            type="text"
-            value={ title }
-            onChange={ (e) => dispatchTitle(e.target.value) }
-            disabled={ lockGrid }
-            className={ cn("text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent ", !lockGrid && "border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400") }
-          />
-          { !lockGrid && (
-            <button onClick={ () => updateContainerTitle(container, title) }>
-              <Check className={ 'text-green-600' }></Check>
-            </button>
-          ) }
-        </div>
-        <div className="flex items-start w-full gap-3 sm:justify-end">
-          { index?.current && (
-            <GraphConfigurationPopover index={ index.current } container={ container } onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
-            } }/>
-          ) }
-        </div>
-      </div>
-
-      <div className="max-w-full w-full h-auto custom-scrollbar">
+    <BaseView body={
+      <div className="max-w-full w-full h-auto custom-scrollbar overflow-hidden">
         <div className="min-h-0">
           <ReactApexChart
             options={ options }
@@ -274,6 +235,14 @@ export default function GraphView({container}: { container: DashboardContainer<S
           />
         </div>
       </div>
-    </div>
+    } configuration={
+      <>
+        { index?.current && (
+          <GraphConfigurationPopover index={ index.current } container={ container } onChange={ (event) => {
+            registerObserver(eventObserver(event, index.current!))
+          } }/>
+        ) }
+      </>
+    } container={ container }/>
   )
 }

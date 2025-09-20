@@ -25,11 +25,12 @@ export default function RootLayout({children}: Readonly<{ children: React.ReactN
     </ThemeProvider>
     <ToastContainer
       position="top-center"
-      limit={ 10 }
-      autoClose={ 4300 }
+      limit={ 3 }
+      autoClose={ 1500 }
       hideProgressBar={ false }
-      newestOnTop={ false }
+      newestOnTop={ true }
       closeOnClick={ false }
+      closeButton={true}
       rtl={ true }
       pauseOnFocusLoss
       draggable

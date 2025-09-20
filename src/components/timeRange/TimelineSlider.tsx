@@ -274,7 +274,7 @@ export default function TimelineSlider({
       {/* Header: time + controls */ }
 
       <div className="flex items-center justify-between mb-2 text-sm text-white">
-        <div>
+        <div className={'flex items-center gap-2 align-middle justify-center'}>
           <button
             className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"
             onClick={ () => {
@@ -292,6 +292,11 @@ export default function TimelineSlider({
             aria-label={ isPlaying ? "Pause" : "Play" }
           >{ isPlaying ? "Pause" : "Play" }
           </button>
+          <div className="flex gap-1 text-sm font-light text-black dark:text-white">
+            <div className="text-sm">{ formatBoundaryLabel(currentTime, endDate) }</div>
+            <div className="text-sm text-black dark:text-blue-400">{ '/' }</div>
+            <div className="text-sm text-gray-400">{ formatBoundaryLabel(endDate, currentTime) }</div>
+          </div>
         </div>
         <div className={ 'flex gap-2' }>
 
@@ -332,26 +337,25 @@ export default function TimelineSlider({
             aria-label="Reset view"
           >Reset
           </button>
-          <button
-            className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"
-            onClick={ () => setIsShowingFullSlider(!isShowingFullSlider) }
-            aria-label="Reset view"
-          >
-            { isShowingFullSlider ? (
-              <PanelBottomClose width={ 18 } height={ 18 }/>
-            ) : (
-              <PanelBottomOpen width={ 18 } height={ 18 }/>
-            ) }
-          </button>
+          {/*<button*/}
+          {/*  className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"*/}
+          {/*  onClick={ () => setIsShowingFullSlider(!isShowingFullSlider) }*/}
+          {/*  aria-label="Reset view"*/}
+          {/*>*/}
+          {/*  { isShowingFullSlider ? (*/}
+          {/*    <PanelBottomClose width={ 18 } height={ 18 }/>*/}
+          {/*  ) : (*/}
+          {/*    <PanelBottomOpen width={ 18 } height={ 18 }/>*/}
+          {/*  ) }*/}
+          {/*</button>*/}
         </div>
       </div>
-
 
       {/* Ruler (unit-aware) */ }
       <div
         ref={ containerRef }
         onWheel={ onWheel }
-        className="relative w-full rounded-2xl bg-white shadow-sm border border-slate-200 p-3"
+        className="relative w-full rounded-2xl bg-white dark:bg-gray-700 shadow-sm border border-slate-200 dark:border-gray-500 p-3"
       >
         {/* Ruler (unit-aware) */ }
         <div className="relative h-8 mb-2 overflow-hidden">
@@ -359,7 +363,7 @@ export default function TimelineSlider({
             <div key={ t } className="absolute top-0 h-full"
                  style={ {left: `${ pct(t) }%`, transform: "translateX(-50%)"} }>
               <div className="w-px bg-slate-300 h-4"/>
-              <div className="text-[10px] text-slate-500 font-mono mt-1 text-center min-w-[30px] -translate-x-1/2">
+              <div className="text-[10px] text-black dark:text-white font-mono mt-1 text-center min-w-[30px] -translate-x-1/2">
                 { formatTickLabel(secondsToTimestamp(t), currentUnit) }
               </div>
             </div>
@@ -403,10 +407,8 @@ export default function TimelineSlider({
             {/*@ts-ignore*/ }
             <Slider { ...sliderProps } />
             { isShowingFullSlider && (
-              <div className={ 'flex justify-between mt-5' }>
-                <div className="text-sm">{ formatBoundaryLabel(currentTime, endDate) }</div>
-                <div className="text-sm">{ formatBoundaryLabel(endDate, currentTime) }</div>
-              </div>
+             <>
+             </>
             ) }
           </div>
         </div>

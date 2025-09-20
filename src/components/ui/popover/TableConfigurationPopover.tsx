@@ -43,9 +43,9 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={ 'text-gray-800 dark:text-white/90' }>
-          <Settings/>
-        </Button>
+        <div className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300  px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}>
+          Configuration
+        </div>
       </PopoverTrigger>
       <PopoverContent
         className="w-80"

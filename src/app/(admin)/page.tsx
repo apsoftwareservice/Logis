@@ -1,13 +1,19 @@
 "use client"
 
 import React from "react"
-import TableView from "@/components/dashboard/table/TableView"
+import TableView from "@/components/dashboard/Containers/TableView"
 import { Timeline } from '@/components/timeRange/Timeline'
-import GraphView from '@/components/dashboard/graph/GraphView'
+import GraphView from '@/components/dashboard/Containers/GraphView'
 import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
 import DropZone from '@/components/ui/dropdown/DropZone'
+import { DashboardMetrics } from '@/components/dashboard/Containers/DashboardMetrics'
+import MonthlySalesChart from '@/components/dashboard/Containers/MonthlySalesChart'
+import DemographicCard from '@/components/dashboard/Containers/DemographicCard'
+import MonthlyTarget from '@/components/dashboard/Containers/MonthlyTarget'
+import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
+import cat from '@lottie/cat.json'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -15,52 +21,85 @@ export default function Dashboard() {
   const {containers, lockGrid, index, updateContainerSize, parseLogFile} = useDashboard()
 
   return (
-    <div className="relative min-h-screen flex flex-col">
-      <ResponsiveGridLayout
-        className="layout mb-32"
-        cols={ {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2} }
-        rowHeight={ 50 }
-        autoSize={ true }
-        allowOverlap={ false }
-        isDraggable={ !lockGrid }
-        onDragStop={ layouts => {
-          layouts.forEach(layout => updateContainerSize(layout))
-        } }
-        onResizeStop={ layouts => {
-          layouts.forEach(layout => updateContainerSize(layout))
-        } }
-        draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
-      >
-        { containers.map((container) => {
-          switch (container.type) {
-            case ContainerType.graph:
-              return (
-                <div key={ container.id } data-grid={ container.gridLayout }>
-                  {/* @ts-expect-error ignore*/ }
-                  <GraphView container={ container }/>
-                </div>
-              )
-            case ContainerType.table:
-              return (
-                <div key={ container.id } data-grid={ container.gridLayout }>
-                  {/* @ts-expect-error ignore */ }
-                  <TableView container={ container }/>
-                </div>
-              )
-            default:
-              return null
-          }
-        }) }
-      </ResponsiveGridLayout>
-      { index ? (
-        <div className="fixed bottom-0 left-0 w-full z-50">
-          <Timeline/>
+    <div className="relative h-full w-full flex flex-col">
+      { !index?.current ? (
+        <div className={'min-h-[calc(100vh-100px)] items-center w-full flex'}>
+          <MainWaitingView animation={cat} title={"Drag log file, or start Live Session"}/>
         </div>
       ) : (
-        <div className={ 'w-full h-full' }>
+        <>
+          <ResponsiveGridLayout
+            className="layout mb-40"
+            cols={ {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2} }
+            rowHeight={ 50 }
+            autoSize={ true }
+            allowOverlap={ false }
+            isDraggable={ !lockGrid }
+            onDragStop={ layouts => {
+              layouts.forEach(layout => updateContainerSize(layout))
+            } }
+            onResizeStop={ layouts => {
+              layouts.forEach(layout => updateContainerSize(layout))
+            } }
+            draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
+          >
+            { containers.map((container) => {
+              switch (container.type) {
+                case ContainerType.graph:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore*/ }
+                      <GraphView container={ container }/>
+                    </div>
+                  )
+                case ContainerType.table:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <TableView container={ container }/>
+                    </div>
+                  )
+                case ContainerType.metrics:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <DashboardMetrics container={ container }/>
+                    </div>
+                  )
+                case ContainerType.sales:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <MonthlySalesChart container={ container }/>
+                    </div>
+                  )
+                case ContainerType.card:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <DemographicCard container={ container }/>
+                    </div>
+                  )
+                case ContainerType.target:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <MonthlyTarget container={ container }/>
+                    </div>
+                  )
+                default:
+                  return null
+              }
+            }) }
+          </ResponsiveGridLayout>
+          { index?.current && (
+            <div className="fixed bottom-0 left-0 w-full z-50">
+              <Timeline/>
+            </div>
+          ) }
+        </>
+      )}
 
-        </div>
-      ) }
       <DropZone onFilesDropped={ (files) => {
         parseLogFile(files[0]).then()
       } }/>

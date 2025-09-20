@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from 'react'
 import TimelineSlider from '@/components/timeRange/TimelineSlider'
 import { useDashboard } from '@/context/DashboardContext'
 import { seekValueToEpochMs } from '@/lib/utils'
@@ -18,7 +17,6 @@ export function Timeline() {
           const ms = seekValueToEpochMs(value, timeframe.start, timeframe.end)
           setCurrentTimestamp(Math.floor(ms))
         } }
-
         markers={ markers }
         clips={ clips }
         minWindowSec={ 0.5 }

@@ -35,6 +35,7 @@ type DashboardContextType = {
   handleOnSearch: (value: string) => void
   updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
+  removeContainer: (container: DashboardContainer<object>) => void
 
   startEngineWithSource: (source: InputSource, follow: boolean) => Promise<void>
 };
@@ -51,7 +52,6 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [ dateKey, setDateKey ] = useState<string>('')
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
@@ -62,6 +62,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     // { id: "D", start: 80, end: 110, track: 1, label: "Overlay", color: "#fecaca" }]
   )
   const [ markers, setMarkers ] = useState<Marker[]>([])
+  const cachedDateKey = useRef<string>('')
   const index = useRef<EventTypeIndex>(null)
   const engine = useRef<TimelineEngine>(null)
   const [ timeframe, setTimeframe ] = useState<{ start: number, end: number }>({start: 0, end: 1})
@@ -140,13 +141,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       }
 
       if (engine.current) {
-        const lastVal = getNestedValue(events[events.length - 1], dateKey)
-        const end = toMs(lastVal)
+        if (follow) {
+          const lastVal = getNestedValue(events[events.length - 1], cachedDateKey.current)
+          const end = toMs(lastVal)
 
-        if (end !== null) {
-          setTimeframe({start: timeframe.start, end})
-        } else {
-          toast.error('Failed reading logs timestamp')
+          if (end !== null) {
+            setTimeframe({start: timeframe.start, end})
+          }
         }
       } else {
         index.current = EventTypeIndex.fromSortedBatch(events)
@@ -154,13 +155,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         const {dateKey} = discoverKeys(events[0])
 
         if (dateKey) {
-          setDateKey(dateKey)
+          cachedDateKey.current = dateKey
           const firstVal = getNestedValue(events[0], dateKey)
           const lastVal = getNestedValue(events[events.length - 1], dateKey)
           const start = toMs(firstVal)
           const end = toMs(lastVal)
 
-          if (start != null && end != null) {
+          if (start !== null && end !== null) {
             setTimeframe({start, end})
           } else {
             toast.error('Failed reading logs timestamp')
@@ -225,6 +226,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
+  function removeContainer(container: DashboardContainer<any>) {
+    setContainers(containers => containers.filter(_container => _container.id !== container.id))
+  }
+
   return (
     <DashboardContext.Provider
       value={ {
@@ -245,7 +250,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setLockGrid,
         updateContainerTitle,
         updateContainerSize,
-        startEngineWithSource
+        startEngineWithSource,
+        removeContainer
       } }
     >
       { children }
