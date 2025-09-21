@@ -17,8 +17,8 @@ export function createEventSourceInput(url: string): InputSource {
           if (!payload?.data) {
             return
           }
-          if (Array.isArray(payload)) onEvents(payload)
-          else onEvents([ payload ])
+          if (Array.isArray(payload.data)) onEvents(payload.data)
+          else onEvents([ payload.data ])
         } catch (err) {
           toast.warn(`EventSource JSON parse error ${ err }`)
         }

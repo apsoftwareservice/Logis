@@ -17,7 +17,7 @@ export function DefaultContainerSize(type: ContainerType) {
     case ContainerType.card: return {x: 0, y: 0, w: 6, h: 8}
     case ContainerType.sales: return {x: 0, y: 0, w: 6, h: 5}
     case ContainerType.target: return {x: 0, y: 0, w: 3, h: 4}
-    case ContainerType.logs: return {x: 0, y: 0, w: 12, h: 5}
+    case ContainerType.logs: return {x: 0, y: 0, w: 12, h: 8}
   }
 }
 

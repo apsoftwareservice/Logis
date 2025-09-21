@@ -15,7 +15,7 @@ export default function AddContainer() {
   return (
     <div className="relative">
       <button
-        className="relative flex items-center justify-center transition-colors bg-brand-blue-light border border-gray-200 rounded-full hover:text-gray-700 h-11 w-11 hover:bg-gray-100 dark:border-gray-800 dark:bg-brand-blue-dark text-white dark:hover:bg-gray-800 dark:hover:text-white"
+        className="relative flex items-center justify-center transition-colors bg-brand-blue-light border border-gray-200 rounded-full hover:text-gray-700 h-9 w-9 hover:bg-gray-100 dark:border-gray-800 dark:bg-brand-blue-dark text-white dark:hover:bg-gray-800 dark:hover:text-white"
         onClick={ () => setIsOpen(!isOpen) }
         aria-label="Upload file"
       >

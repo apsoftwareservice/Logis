@@ -7,12 +7,13 @@ import { createFullJsonFileSource } from '@/core/parsers/fullJson'
 import { createNdjsonFileSource } from '@/core/parsers/ndjson'
 import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeRange/TimeLine.types'
-import { DashboardContainer } from '@/types/containers'
+import {ContainerType, DashboardContainer, DefaultContainerSize} from '@/types/containers'
 import { Layout } from 'react-grid-layout'
-import { discoverKeys, getNestedValue, toMs } from '@/lib/utils'
+import {capitalize, discoverKeys, getNestedValue, toMs} from '@/lib/utils'
 
 type DashboardContextType = {
   index?: RefObject<EventTypeIndex<unknown> | null>
+  cachedDateKey?: RefObject<string| null>
   timeframe: { start: number, end: number }
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
@@ -40,6 +41,8 @@ type DashboardContextType = {
   removeContainer: (container: DashboardContainer<object>) => void
 
   startEngineWithSource: (source: InputSource, follow: boolean) => Promise<void>
+
+  followLogs: boolean
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -66,9 +69,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   )
   const [ markers, setMarkers ] = useState<Marker[]>([])
   const cachedDateKey = useRef<string>('')
+  const cachedMessageKey = useRef<string>('')
   const index = useRef<EventTypeIndex>(null)
   const engine = useRef<TimelineEngine>(null)
   const [ timeframe, setTimeframe ] = useState<{ start: number, end: number }>({start: 0, end: 1})
+  const [followLogs, setFollowLogs] = useState(false)
 
   const pendingTsRef = useRef<number | null>(null)
   const scheduledRef = useRef(false)
@@ -146,21 +151,23 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       setLogs(prev => prev.concat([...events]))
 
       if (engine.current) {
+        events.forEach(event => index.current?.appendLiveSorted(event, cachedDateKey.current, cachedMessageKey.current))
         if (follow) {
           const lastVal = getNestedValue(events[events.length - 1], cachedDateKey.current)
           const end = toMs(lastVal)
 
-          if (end !== null) {
+          if (end !== null && timeframe.start > 0) {
             setTimeframe({start: timeframe.start, end})
           }
         }
       } else {
         index.current = EventTypeIndex.fromSortedBatch(events)
         engine.current = new TimelineEngine(index.current)
-        const {dateKey} = discoverKeys(events[0])
+        const {dateKey, messageKey} = discoverKeys(events[0])
 
-        if (dateKey) {
+        if (dateKey && messageKey) {
           cachedDateKey.current = dateKey
+          cachedMessageKey.current = messageKey
           const firstVal = getNestedValue(events[0], dateKey)
           const lastVal = getNestedValue(events[events.length - 1], dateKey)
           const start = toMs(firstVal)
@@ -169,12 +176,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
           if (start !== null && end !== null) {
             setTimeframe({start, end})
             setCurrentTimestamp(start)
+            setFollowLogs(follow)
           } else {
             toast.error('Failed reading logs timestamp')
           }
+
+          addDefaultLoggerContainer()
         }
       }
     })
+  }
+
+  function addDefaultLoggerContainer() {
+    setContainers(containers => containers.concat({
+      id: crypto.randomUUID(),
+      title: capitalize(ContainerType.logs),
+      type: ContainerType.logs,
+      gridLayout: DefaultContainerSize(ContainerType.logs),
+      event: '',
+      data: {}
+    }))
   }
 
   function handleOnSearch(value: string) {
@@ -258,7 +279,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         updateContainerSize,
         startEngineWithSource,
         removeContainer,
-        logs
+        logs,
+        cachedDateKey,
+        followLogs
       } }
     >
       { children }

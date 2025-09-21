@@ -14,6 +14,7 @@ export function Timeline() {
         endDate={ timeframe.end ?? 1 }
         currentTime={ currentTimestamp ?? timeframe.start }
         onSeek={ (value) => {
+          if (value === currentTimestamp) return
           const ms = seekValueToEpochMs(value, timeframe.start, timeframe.end)
           setCurrentTimestamp(Math.floor(ms))
         } }

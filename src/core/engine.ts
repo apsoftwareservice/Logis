@@ -182,13 +182,7 @@ export class EventTypeIndex<TPayload = unknown> {
   }
 
   /** Append a live event (timestamp >= previous of the same type). */
-  appendLiveSorted(event: TPayload): void {
-    const {dateKey, messageKey} = discoverKeys(event)
-
-    if (!dateKey || !messageKey) {
-      toast.error("Could not determine date or message keys from the log file.")
-      return
-    }
+  appendLiveSorted(event: TPayload, dateKey: string, messageKey: string): void {
     const message = (<Record<string, any>>event)[messageKey]
     const date = (<Record<string, any>>event)[dateKey]
 

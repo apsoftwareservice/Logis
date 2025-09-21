@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// ws-server.ts
+// server.ts
 var http_1 = require("http");
 function hashToken(raw) {
     return __awaiter(this, void 0, void 0, function () {

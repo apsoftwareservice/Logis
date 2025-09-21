@@ -19,6 +19,7 @@
     "@react-jvectormap/world": "^1.1.2",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/postcss": "^4.1.12",
+    "@tanstack/react-table": "^8.21.3",
     "apexcharts": "^5.3.5",
     "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.23.12",

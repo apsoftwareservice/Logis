@@ -294,8 +294,8 @@ export default function TimelineSlider({
           </button>
           <div className="flex gap-1 text-sm font-light text-black dark:text-white">
             <div className="text-sm">{ formatBoundaryLabel(currentTime, endDate) }</div>
-            <div className="text-sm text-black dark:text-blue-400">{ '/' }</div>
-            <div className="text-sm text-gray-400">{ formatBoundaryLabel(endDate, currentTime) }</div>
+            <div className="text-sm text-black text-blue-500 dark:text-blue-400">{ '/' }</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{ formatBoundaryLabel(endDate, currentTime) }</div>
           </div>
         </div>
         <div className={ 'flex gap-2' }>
