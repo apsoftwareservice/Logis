@@ -10,9 +10,6 @@ export type Observer = {
 export class TimelineEngine {
   private observers: Observer[] = []
 
-  constructor(private index: EventTypeIndex) {
-  }
-
   register(observer: Observer) {
     const idx = this.observers.findIndex(o => o.id === observer.id)
     if (idx >= 0) {

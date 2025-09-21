@@ -1,12 +1,12 @@
 "use client"
 import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/core/engine'
-import { detectFileFormat, FileFormat } from '@/core/parsers/detectFileFormat'
+import { detectFileFormat, FileFormat } from '@/core/utils'
 import { InputSource } from '@/core/sources/InputSource'
-import { createFullJsonFileSource } from '@/core/parsers/fullJson'
-import { createNdjsonFileSource } from '@/core/parsers/ndjson'
+import { createFullJsonFileSource } from '@/core/sources/jsonFileSource'
+import { createNdjsonFileSource } from '@/core/sources/ndJsonFileSource'
 import { toast } from 'react-toastify'
-import { Clip, Marker } from '@/components/timeRange/TimeLine.types'
+import { Clip, Marker } from '@/components/timeline/TimeLine.types'
 import {ContainerType, DashboardContainer, DefaultContainerSize} from '@/types/containers'
 import { Layout } from 'react-grid-layout'
 import {capitalize, discoverKeys, getNestedValue, toMs} from '@/lib/utils'
@@ -163,7 +163,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         }
       } else {
         index.current = EventTypeIndex.fromSortedBatch(events)
-        engine.current = new TimelineEngine(index.current)
+        engine.current = new TimelineEngine()
         const {dateKey, messageKey} = discoverKeys(events[0])
 
         if (dateKey && messageKey) {

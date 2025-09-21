@@ -5,7 +5,7 @@ export enum ContainerType {
   card = 'card',
   sales = 'sales',
   target = 'target',
-  logs = 'logs'
+  logs = 'logs',
 
 }
 
@@ -44,6 +44,10 @@ export interface TableModel {
 export interface TargetModel {
   value: string
   maxValue: number
+}
+
+export interface WaitForEventModel {
+  lastState: boolean
 }
 
 export type LogsModel = object

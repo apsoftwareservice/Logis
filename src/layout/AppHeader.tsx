@@ -78,18 +78,22 @@ const AppHeader: React.FC = () => {
           <Link href="/">
             <>
               <Image
-                className="dark:hidden"
+                className="dark:hidden max-w-[100px]"
                 src="/images/logo/logo.svg"
                 alt="Logo"
                 width={ 100 }
                 height={ 40 }
+                style={{ width: 'auto', height: 'auto'}}
+                priority={true}
               />
               <Image
-                className="hidden dark:block"
+                className="hidden dark:block max-w-[100px]"
                 src="/images/logo/logo-dark.svg"
                 alt="Logo"
                 width={ 100 }
                 height={ 40 }
+                style={{ width: 'auto', height: 'auto'}}
+                priority={true}
               />
             </>
           </Link>
@@ -101,10 +105,10 @@ const AppHeader: React.FC = () => {
         </div>
         <div className={ `flex items-center justify-between w-full gap-2 pr-2 py-4 justify-end lg:px-0` }>
           <LiveSession/>
-          <GridController/>
+          { index?.current && <GridController/>}
           <ThemeToggleButton/>
           <UploadFile onFileSelectAction={ parseLogFile }/>
-          <AddContainer/>
+          { index?.current && <AddContainer/>}
         </div>
       </div>
     </header>

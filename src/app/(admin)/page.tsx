@@ -2,7 +2,7 @@
 
 import React from "react"
 import TableView from "@/components/dashboard/Containers/TableView"
-import { Timeline } from '@/components/timeRange/Timeline'
+import { Timeline } from '@/components/timeline/Timeline'
 import GraphView from '@/components/dashboard/Containers/GraphView'
 import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
@@ -30,7 +30,7 @@ export default function Dashboard() {
       ) : (
         <>
           <ResponsiveGridLayout
-            className="layout mb-40"
+            className="layout mb-48"
             cols={ {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2} }
             rowHeight={ 50 }
             autoSize={ true }
