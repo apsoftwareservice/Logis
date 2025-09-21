@@ -1,4 +1,4 @@
-// ws-server.ts
+// server.ts
 import { createServer } from "http";
 
 async function hashToken(raw: string): Promise<string> {
