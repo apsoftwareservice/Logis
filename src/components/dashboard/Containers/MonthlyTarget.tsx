@@ -93,7 +93,7 @@ export default function MonthlyTarget({container}: { container: DashboardContain
       if (data && valueRef.current.value) {
         const value = getNestedValue(data as any, valueRef.current.value)
         if (value) {
-          setSeries([ (value / container.data.maxValue) * 100 ])
+          setSeries([ (value / valueRef.current.maxValue) * 100 ])
         } else {
           setSeries([0])
         }

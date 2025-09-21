@@ -13,13 +13,13 @@ interface TableHeaderProps {
 }
 
 // Props for TableBody
-interface TableBodyProps {
+interface TableBodyProps extends React.HTMLAttributes<HTMLTableSectionElement>  {
   children: ReactNode; // Body row(s)
   className?: string; // Optional className for styling
 }
 
 // Props for TableRow
-interface TableRowProps {
+interface TableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode; // Cells (th or td)
   className?: string; // Optional className for styling
 }
@@ -42,8 +42,8 @@ const TableHeader: React.FC<TableHeaderProps> = ({ children, className }) => {
 };
 
 // TableBody Component
-const TableBody: React.FC<TableBodyProps> = ({ children, className }) => {
-  return <tbody className={className}>{children}</tbody>;
+const TableBody: React.FC<TableBodyProps> = ({ children, className, ...props }) => {
+  return <tbody className={className} {...props}>{children}</tbody>;
 };
 
 // TableRow Component

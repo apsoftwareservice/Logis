@@ -158,6 +158,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
           if (end !== null && timeframe.start > 0) {
             setTimeframe({start: timeframe.start, end})
+            setCurrentTimestamp(end)
           }
         }
       } else {

@@ -12,18 +12,116 @@ import {
   SortingState,
   ColumnFiltersState,
 } from "@tanstack/react-table"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { DashboardContainer, LogsModel } from '@/types/containers'
-import React, { useEffect, useState, useRef } from "react" // <-- Import useRef
+import React, { useEffect, useState, useRef } from "react"
+import { useVirtualizer } from '@tanstack/react-virtual'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// A custom component for a sortable header cell
+const SortableHeader = ({ header, table }: any) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: header.column.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 1 : 0,
+    position: 'relative',
+  };
+
+  // Get the dynamic cell style
+  const getCellStyle = (width: number) => ({
+    width,
+    minWidth: width,
+    maxWidth: width,
+    flexShrink: 0,
+    flexGrow: 0
+  });
+
+  return (
+      <div
+          ref={setNodeRef}
+          //@ts-expect-error
+          style={{ ...style, ...getCellStyle(header.column.getSize()) }}
+          className="text-black dark:text-white select-none p-3 relative"
+          {...attributes}
+      >
+        <div className="flex items-center gap-2" {...listeners}>
+          {header.isPlaceholder ? null : (
+              <div
+                  className="cursor-pointer flex items-center gap-1"
+                  onClick={header.column.getToggleSortingHandler()}
+              >
+                {flexRender(header.column.columnDef.header, header.getContext())}
+                {header.column.getIsSorted() === "asc" && "▲"}
+                {header.column.getIsSorted() === "desc" && "▼"}
+              </div>
+          )}
+        </div>
+        {(table.getState().columnFilters.some((f: any) => f.id === header.column.id) || table.getState().showFilter) && (
+            <div className="pt-2">
+              <input
+                  value={(header.column.getFilterValue() ?? "") as string}
+                  onChange={e => header.column.setFilterValue(e.target.value)}
+                  placeholder={`Filter...`}
+                  className="w-full border rounded px-2 py-1 text-xs bg-white dark:bg-gray-800 text-black dark:text-white"
+              />
+            </div>
+        )}
+        <div
+            onMouseDown={header.getResizeHandler()}
+            onTouchStart={header.getResizeHandler()}
+            className={`absolute right-0 top-0 h-full w-2 cursor-col-resize select-none ${
+                header.column.getIsResizing()
+                    ? "bg-blue-500"
+                    : "hover:bg-gray-200"
+            }`}
+        />
+      </div>
+  );
+};
+
+const VirtualizedTableRow = React.forwardRef(({ row, cellStyle, rowStyle, isEvenRow, ...props }: any, ref) => {
+  return (
+      <div
+          ref={ref}
+          className={`flex w-full text-sm font-mono whitespace-pre-wrap break-words border-b border-gray-200 dark:border-gray-700 ${isEvenRow ? "bg-gray-50 dark:bg-gray-800" : "bg-gray-100 dark:bg-gray-900"}`}
+          style={rowStyle}
+          {...props}
+      >
+        {row.getVisibleCells().map((cell: any) => (
+            <div
+                key={cell.id}
+                style={cellStyle(cell.column.getSize())}
+                className="p-3 text-black dark:text-white"
+            >
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </div>
+        ))}
+      </div>
+  )
+})
+VirtualizedTableRow.displayName = "VirtualizedTableRow";
 
 export default function Logger({container}: { container: DashboardContainer<LogsModel> }) {
-  const {logs, currentTimestamp, cachedDateKey} = useDashboard()
+  const {logs, currentTimestamp} = useDashboard()
 
   const [columns, setColumns] = useState<ColumnDef<LogsModel>[]>([])
   const [sorting, setSorting] = useState<SortingState>([])
@@ -31,55 +129,40 @@ export default function Logger({container}: { container: DashboardContainer<Logs
   const [showFilter, setShowFilter] = useState<boolean>(false)
   const [beautifyJSON, setBeautifyJSON] = useState<boolean>(false)
 
-  // Create a ref to store a map of row elements
-  const rowRefs = useRef<Map<string, HTMLTableRowElement | null>>(new Map());
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+  // NEW: Add columnSizing state
+  const [columnSizing, setColumnSizing] = useState({});
 
-  // Use a ref for the table container to get a reference to it
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  // This useEffect will scroll to the row when currentTimestamp changes
-  useEffect(() => {
-    const rowsLength = table.getRowModel().rows.length
-    if (currentTimestamp && rowsLength > 0) {
-      // Get the row ID from the TanStack table instance
-      const rowId = table.getRowModel().rows[rowsLength - 1]?.id;
-
-      if (rowId) {
-        // Get the row DOM element from the refs map
-        const rowElement = rowRefs.current.get(rowId);
-
-        if (rowElement) {
-          // Scroll the element into view with smooth behavior
-          rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
-    }
-  }, [ currentTimestamp, logs ]);
+  const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(KeyboardSensor),
+  );
 
   useEffect(() => {
     if (logs && logs.length > 0) {
       const keys = Object.keys(logs[0]) as (keyof LogsModel)[]
-
-      setColumns(
-          keys.map((key) => ({
-            accessorKey: key,
-            header: key,
-            cell: (info) => {
-              const value = info.getValue() as unknown
-              return typeof value === "number" && String(value).length === 13
-                  ? new Date(value).toLocaleString()
-                  : typeof value === "object"
-                      ? (beautifyJSON ? JSON.stringify(value, null, 2) : JSON.stringify(value))
-                      : String(value ?? "")
-            },
-            // enable sorting + filtering + resizing
-            enableSorting: true,
-            enableColumnFilter: true,
-            enableResizing: true,
-          }))
-      )
+      const newColumns: ColumnDef<LogsModel>[] = keys.map((key) => ({
+        accessorKey: key,
+        header: key,
+        cell: (info) => {
+          const value = info.getValue() as unknown
+          return typeof value === "number" && String(value).length === 13
+              ? new Date(value).toLocaleString()
+              : typeof value === "object"
+                  ? (beautifyJSON ? JSON.stringify(value, null, 2) : JSON.stringify(value))
+                  : String(value ?? "")
+        },
+        enableSorting: true,
+        enableColumnFilter: true,
+        enableResizing: true,
+      }))
+      setColumns(newColumns)
+      //@ts-expect-error
+      setColumnOrder(newColumns.map(c => c.accessorKey as string))
     }
-  }, [ logs, beautifyJSON ])
+  }, [logs, beautifyJSON])
 
   const table = useReactTable({
     data: logs ?? [],
@@ -87,21 +170,53 @@ export default function Logger({container}: { container: DashboardContainer<Logs
     state: {
       sorting,
       columnFilters,
+      columnOrder,
+      columnSizing, // Pass column sizing state to the table
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onColumnOrderChange: setColumnOrder,
+    onColumnSizingChange: setColumnSizing, // Set the handler for sizing changes
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     columnResizeMode: "onChange",
   })
 
-  // Function to set the ref for each row
-  const setRowRef = (rowId: string, element: HTMLTableRowElement | null) => {
-    if (element) {
-      rowRefs.current.set(rowId, element);
-    } else {
-      rowRefs.current.delete(rowId);
+  const rowVirtualizer = useVirtualizer({
+    count: table.getRowModel().rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 35,
+    overscan: 15,
+  });
+
+  // Re-measure when column sizes, logs, or JSON beautification changes
+  useEffect(() => {
+    rowVirtualizer.measure();
+  }, [logs, beautifyJSON, table.getState().columnSizing, rowVirtualizer]);
+
+  // Auto-scroll to the bottom when new logs are added
+  useEffect(() => {
+    if (logs.length > 0) {
+      rowVirtualizer.scrollToIndex(logs.length - 1, { align: 'end' });
+    }
+  }, [logs.length, rowVirtualizer]);
+
+  const getCellStyle = (width: number) => ({
+    width,
+    minWidth: width,
+    maxWidth: width,
+    flexShrink: 0,
+    flexGrow: 0,
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = columnOrder.findIndex(id => id === active.id);
+      const newIndex = columnOrder.findIndex(id => id === over?.id);
+      const newOrder = arrayMove(columnOrder, oldIndex, newIndex);
+      setColumnOrder(newOrder);
     }
   };
 
@@ -110,96 +225,66 @@ export default function Logger({container}: { container: DashboardContainer<Logs
           body={
             <div className="h-full flex min-h-0">
               <div className="relative flex-1 min-h-0 w-full">
-                {/* Add a ref to the container for better scroll control */}
-                <div ref={tableContainerRef} className="h-full overflow-auto min-w-0 rounded-2xl border">
-                  <Table className="text-sm font-mono w-full border-collapse">
-                    <TableHeader className="sticky top-0 z-10 dark:bg-gray-900 bg-blue-50 border-b">
-                      {table.getHeaderGroups().map(headerGroup => (
-                          <TableRow key={headerGroup.id}>
-                            {headerGroup.headers.map(header => (
-                                <TableCell
-                                    key={header.id}
-                                    isHeader={true}
-                                    style={{ width: header.column.getSize() }}
-                                    className="text-black dark:text-white select-none p-0 relative"
-                                >
-                                  <div className="px-3 py-2 flex items-center gap-2">
-                                    {header.isPlaceholder ? null : (
-                                        <div
-                                            className="cursor-pointer flex items-center gap-1"
-                                            onClick={header.column.getToggleSortingHandler()}
-                                        >
-                                          {flexRender(header.column.columnDef.header, header.getContext())}
-                                          {/* Sorting indicator */}
-                                          {header.column.getIsSorted() === "asc" && "▲"}
-                                          {header.column.getIsSorted() === "desc" && "▼"}
-                                        </div>
-                                    )}
-                                  </div>
-                                  {/* Filter input */}
-                                  {(showFilter && header.column.getCanFilter()) && (
-                                      <div className="px-2 pb-2">
-                                        <input
-                                            value={(header.column.getFilterValue() ?? "") as string}
-                                            onChange={e => header.column.setFilterValue(e.target.value)}
-                                            placeholder={`Filter...`}
-                                            className="w-full border rounded px-2 py-1 text-xs bg-white dark:bg-gray-800 text-black dark:text-white"
-                                        />
-                                      </div>
-                                  )}
-                                  {/* Resize handle */}
-                                  <div
-                                      onMouseDown={header.getResizeHandler()}
-                                      onTouchStart={header.getResizeHandler()}
-                                      className={`absolute right-0 top-2.5 h-[50%] w-0.5 cursor-col-resize select-none ${
-                                          header.column.getIsResizing()
-                                              ? "bg-blue-500"
-                                              : "bg-gray-200 hover:bg-blue-300"
-                                      }`}
+                <div ref={parentRef} className="h-full overflow-auto min-w-0 rounded-2xl border">
+                  <div className="w-full">
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                    >
+                      <div className="sticky top-0 z-10 dark:bg-gray-900 bg-blue-50 border-b flex">
+                        <SortableContext
+                            items={columnOrder}
+                            strategy={horizontalListSortingStrategy}
+                        >
+                          {table.getHeaderGroups().map(headerGroup => (
+                              headerGroup.headers.map(header => (
+                                  <SortableHeader
+                                      key={header.id}
+                                      header={header}
+                                      table={table}
                                   />
-                                </TableCell>
-                            ))}
-                          </TableRow>
-                      ))}
-                    </TableHeader>
-                    <TableBody>
-                      {table.getRowModel().rows.map((row) => (
-                          <TableRow
-                              key={row.id}
-                              // Set the ref for each row using the new helper function
-                              //@ts-expect-error
-                              ref={el => setRowRef(row.id, el)}
-                              className={`${
-                                  row.index % 2 === 0
-                                      ? "bg-gray-50 dark:bg-gray-800"
-                                      : "bg-gray-100 dark:bg-gray-900"
-                              }`}
-                          >
-                            {row.getVisibleCells().map(cell => (
-                                <TableCell
-                                    key={cell.id}
-                                    style={{ width: cell.column.getSize() }}
-                                    className="text-black dark:text-white whitespace-pre-wrap break-words px-3 py-2"
-                                >
-                                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </TableCell>
-                            ))}
-                          </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                              ))
+                          ))}
+                        </SortableContext>
+                      </div>
+                    </DndContext>
+
+                    <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }} className="w-full">
+                      {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                        const row = table.getRowModel().rows[virtualRow.index];
+                        return (
+                            <VirtualizedTableRow
+                                key={row.id}
+                                row={row}
+                                data-index={virtualRow.index}
+                                isEvenRow={row.index % 2 === 0}
+                                ref={rowVirtualizer.measureElement}
+                                rowStyle={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  width: '100%',
+                                  transform: `translateY(${virtualRow.start}px)`,
+                                }}
+                                cellStyle={getCellStyle}
+                            />
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           }
           configuration={<>
             <div
-                className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300  px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                 onClick={() => setShowFilter(!showFilter)}>
               Use Filter
             </div>
             <div
-                className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300  px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                 onClick={() => setBeautifyJSON(!beautifyJSON)}>
               Beautify JSON
             </div>
