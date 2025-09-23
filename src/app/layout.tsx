@@ -23,22 +23,6 @@ export default function RootLayout({children}: Readonly<{ children: React.ReactN
         </DashboardProvider>
       </SidebarProvider>
     </ThemeProvider>
-    <ToastContainer
-      position="top-center"
-      limit={ 3 }
-      autoClose={ 1500 }
-      hideProgressBar={ false }
-      newestOnTop={ true }
-      closeOnClick={ false }
-      closeButton={true}
-      rtl={ true }
-      pauseOnFocusLoss
-      draggable
-      stacked
-      pauseOnHover
-      theme="system"
-      transition={ Slide }
-    />
     </body>
     </html>
   )

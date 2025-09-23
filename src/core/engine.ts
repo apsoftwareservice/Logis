@@ -1,5 +1,6 @@
 import { discoverKeys } from "@/lib/utils"
 import { toast } from "react-toastify"
+import { InputSource } from '@/core/sources/InputSource'
 
 export type Observer = {
   id: string;
@@ -9,6 +10,9 @@ export type Observer = {
 
 export class TimelineEngine {
   private observers: Observer[] = []
+
+  constructor(readonly source: InputSource) {
+  }
 
   register(observer: Observer) {
     const idx = this.observers.findIndex(o => o.id === observer.id)

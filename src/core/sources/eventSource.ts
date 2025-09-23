@@ -1,5 +1,6 @@
 import type { InputSource, OnEvents } from "@/core/sources/InputSource"
 import { toast } from 'react-toastify'
+import { InputType } from '@/core/utils'
 
 /**
  * An EventSource-based stream that expects the server to send JSON events.
@@ -8,7 +9,7 @@ import { toast } from 'react-toastify'
 export function createEventSourceInput(url: string): InputSource {
   let es: EventSource | null = null
   return {
-    name: `stream:eventsource:${ url }`,
+    type: InputType.stream,
     start: (onEvents: OnEvents) => {
       es = new EventSource(url)
       es.onmessage = (ev) => {

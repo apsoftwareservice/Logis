@@ -1,5 +1,6 @@
 import type { InputSource, OnEvents } from "@/core/sources/InputSource"
 import type { LogEvent } from "@/core/engine"
+import { InputType } from '@/core/utils'
 
 /**
  * Create a source from a raw string (useful for copy/paste).
@@ -7,7 +8,7 @@ import type { LogEvent } from "@/core/engine"
  */
 export function createClipboardSource(text: string): InputSource {
   return {
-    name: "clipboard",
+    type: InputType.clipboard,
     start: (onEvents: OnEvents) => {
       // try JSON array
       try {

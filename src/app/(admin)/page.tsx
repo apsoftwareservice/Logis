@@ -15,8 +15,11 @@ import MonthlyTarget from '@/components/dashboard/Containers/MonthlyTarget'
 import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
 import cat from '@lottie/cat.json'
 import Logger from '@/components/dashboard/Containers/Logger'
+import { DashboardEvent } from '@/components/dashboard/Containers/DashboardEvent'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
+
+const gridSize = {lg: 19, md: 16, sm: 14, xs: 6, xxs: 2}
 
 export default function Dashboard() {
   const {containers, lockGrid, index, updateContainerSize, parseLogFile} = useDashboard()
@@ -31,7 +34,7 @@ export default function Dashboard() {
         <>
           <ResponsiveGridLayout
             className="layout mb-48"
-            cols={ {lg: 12, md: 10, sm: 6, xs: 4, xxs: 2} }
+            cols={ gridSize }
             rowHeight={ 50 }
             autoSize={ true }
             allowOverlap={ false }
@@ -65,6 +68,13 @@ export default function Dashboard() {
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
                       <DashboardMetrics container={ container }/>
+                    </div>
+                  )
+                case ContainerType.event:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <DashboardEvent container={ container }/>
                     </div>
                   )
                 case ContainerType.sales:

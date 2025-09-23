@@ -1,20 +1,22 @@
 "use client"
 import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/core/engine'
-import { detectFileFormat, FileFormat } from '@/core/utils'
+import { detectFileFormat, InputType } from '@/core/utils'
 import { InputSource } from '@/core/sources/InputSource'
 import { createFullJsonFileSource } from '@/core/sources/jsonFileSource'
 import { createNdjsonFileSource } from '@/core/sources/ndJsonFileSource'
 import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeline/TimeLine.types'
-import {ContainerType, DashboardContainer, DefaultContainerSize} from '@/types/containers'
+import { ContainerType, DashboardContainer, DefaultContainerSize } from '@/types/containers'
 import { Layout } from 'react-grid-layout'
-import {capitalize, discoverKeys, getNestedValue, toMs} from '@/lib/utils'
+import { capitalize, discoverKeys, getNestedValue, toMs } from '@/lib/utils'
+import { createEventSourceInput } from '@/core/sources/eventSource'
+import * as process from 'process'
 
 type DashboardContextType = {
   index?: RefObject<EventTypeIndex<unknown> | null>
-  cachedDateKey?: RefObject<string| null>
-  timeframe: { start: number, end: number }
+  cachedDateKey?: RefObject<string | null>
+  timeframe: { start?: number, end?: number } | undefined
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
 
@@ -40,9 +42,12 @@ type DashboardContextType = {
   updateContainerSize: (layout: Layout) => void
   removeContainer: (container: DashboardContainer<object>) => void
 
-  startEngineWithSource: (source: InputSource, follow: boolean) => Promise<void>
-
   followLogs: boolean
+  setFollowLogs: React.Dispatch<React.SetStateAction<boolean>>
+
+  sessionId?: string
+  isLiveSession: boolean
+  handleLiveSessionStateChange: (state: boolean) => void
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -57,7 +62,9 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [logs, setLogs] = useState<object[]>([])
+  const [ sessionId, setSessionId ] = useState<string>()
+  const [ isLiveSession, setIsLiveSession ] = useState(false)
+  const [ logs, setLogs ] = useState<object[]>([])
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
@@ -72,8 +79,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const cachedMessageKey = useRef<string>('')
   const index = useRef<EventTypeIndex>(null)
   const engine = useRef<TimelineEngine>(null)
-  const [ timeframe, setTimeframe ] = useState<{ start: number, end: number }>({start: 0, end: 1})
-  const [followLogs, setFollowLogs] = useState(false)
+  const [ timeframe, setTimeframe ] = useState<{ start?: number, end?: number }>()
+  const [ followLogs, setFollowLogs ] = useState(false)
 
   const pendingTsRef = useRef<number | null>(null)
   const scheduledRef = useRef(false)
@@ -91,9 +98,123 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     })
   }, [])
 
+  // Helper to register live session and get token
+  async function registerLiveSession(key: string): Promise<{ token: string; reused: boolean }> {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Register failed (${res.status}): ${text || res.statusText}`)
+    }
+    return res.json()
+  }
+
+  async function handleLiveSessionStateChange(state: boolean) {
+    if (engine.current && engine.current?.source.type !== InputType.stream) {
+      toast.error('Refresh the page and start with Live Session')
+      return
+    }
+
+    setIsLiveSession(state)
+
+    if (state) {
+      if (engine.current) {
+        toast.info('Live Session started')
+        engine.current.source.start(handleSourceEvents)
+      } else {
+        setTimeframe({ start: 0, end: 0 })
+        try {
+          const { token, reused } = await registerLiveSession(sessionId ?? crypto.randomUUID())
+          setSessionId(token)
+          toast.info(reused ? 'Live Session started (reused token)' : 'Live Session started')
+          await startEngineWithSource(createEventSourceInput(`${process.env.NEXT_PUBLIC_BASE_URL}/stream?token=${token}`))
+        } catch (e: any) {
+          toast.error(`${e}`)
+          setIsLiveSession(false)
+        }
+      }
+    } else {
+      if (engine.current?.source) {
+        engine.current.source.stop?.()
+        toast.info('Live Session Stopped')
+      }
+      setFollowLogs(false)
+    }
+  }
+
+  const handleFirstEventParsing = useCallback((events: LogEvent[]) => {
+    index.current = EventTypeIndex.fromSortedBatch(events)
+    const {dateKey, messageKey} = discoverKeys(events[0])
+
+    if (dateKey && messageKey) {
+      cachedDateKey.current = dateKey
+      cachedMessageKey.current = messageKey
+      const startDate = getNestedValue(events[0], dateKey)
+      const endDate = getNestedValue(events[events.length - 1], dateKey)
+      const start = toMs(startDate)
+      const end = toMs(endDate)
+
+      if (start !== null && end !== null) {
+        setTimeframe({start, end})
+        setCurrentTimestamp(start)
+        addDefaultLoggerContainer()
+      } else {
+        toast.error('Failed reading logs timestamp')
+      }
+    }
+  }, [])
+
+  const handleSourceEvents = useCallback((events: LogEvent[]) => {
+    if (!engine?.current?.source) {
+      toast.error('Engine not found')
+    }
+
+    if (!events || events.length === 0) {
+      console.warn(`no events from input source ${ engine.current?.source.type }`)
+      return
+    }
+
+    if (!index.current) {
+      handleFirstEventParsing(events)
+    }
+
+    setLogs(prev => prev.concat([ ...events ]))
+
+    if (engine?.current?.source.type === InputType.stream) {
+      events.forEach(event => index.current?.appendLiveSorted(event, cachedDateKey.current, cachedMessageKey.current))
+
+      const lastEndDate = getNestedValue(events[events.length - 1], cachedDateKey.current)
+      const end = toMs(lastEndDate)
+
+      if (end !== null) {
+        setTimeframe(prev => {
+          return {
+            ...prev,
+            end
+          }
+        })
+      }
+    }
+  }, [followLogs, handleFirstEventParsing])
+
+  const startEngineWithSource = useCallback(async (source: InputSource) => {
+    engine.current = new TimelineEngine(source)
+    setFollowLogs(source.type === InputType.stream)
+    engine.current.source.start(handleSourceEvents)
+  }, [ handleSourceEvents ])
+
   useEffect(() => {
     requestSeek(currentTimestamp)
   }, [ currentTimestamp, requestSeek ])
+
+  useEffect(() => {
+    if (followLogs && timeframe?.end != null) {
+      setCurrentTimestamp(timeframe.end)
+    }
+  }, [followLogs, timeframe?.end, setCurrentTimestamp])
 
   function registerObserver(observer: Observer) {
     engine.current?.register(observer)
@@ -105,11 +226,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       let source: InputSource
 
       switch (format) {
-        case FileFormat.json:
+        case InputType.json:
           source = createFullJsonFileSource(file)
           break
 
-        case FileFormat.ndjson:
+        case InputType.ndjson:
           source = createNdjsonFileSource(file)
           break
 
@@ -119,13 +240,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
           try {
             const parsed = JSON.parse(text)
             source = {
-              name: "fallback:parsed",
+              type: InputType.unknown,
               start: (onEvents) => onEvents(parsed)
             }
           } catch {
             // treat as NDJSON lines
             source = {
-              name: "fallback:ndjson",
+              type: InputType.ndjson,
               start: (onEvents) => {
                 const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
                 const parsed = lines.map(l => JSON.parse(l) as LogEvent)
@@ -135,57 +256,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
           }
       }
 
-      await startEngineWithSource(source, false)
+      await startEngineWithSource(source)
     } catch (error) {
       toast.error(`${ error }`)
     }
-  }
-
-  async function startEngineWithSource(source: InputSource, follow: boolean) {
-    await source.start(async (events) => {
-      if (!events || events.length === 0) {
-        console.warn("no events from input source", source.name)
-        return
-      }
-
-      setLogs(prev => prev.concat([...events]))
-
-      if (engine.current) {
-        events.forEach(event => index.current?.appendLiveSorted(event, cachedDateKey.current, cachedMessageKey.current))
-        if (follow) {
-          const lastVal = getNestedValue(events[events.length - 1], cachedDateKey.current)
-          const end = toMs(lastVal)
-
-          if (end !== null && timeframe.start > 0) {
-            setTimeframe({start: timeframe.start, end})
-            setCurrentTimestamp(end)
-          }
-        }
-      } else {
-        index.current = EventTypeIndex.fromSortedBatch(events)
-        engine.current = new TimelineEngine()
-        const {dateKey, messageKey} = discoverKeys(events[0])
-
-        if (dateKey && messageKey) {
-          cachedDateKey.current = dateKey
-          cachedMessageKey.current = messageKey
-          const firstVal = getNestedValue(events[0], dateKey)
-          const lastVal = getNestedValue(events[events.length - 1], dateKey)
-          const start = toMs(firstVal)
-          const end = toMs(lastVal)
-
-          if (start !== null && end !== null) {
-            setTimeframe({start, end})
-            setCurrentTimestamp(start)
-            setFollowLogs(follow)
-          } else {
-            toast.error('Failed reading logs timestamp')
-          }
-
-          addDefaultLoggerContainer()
-        }
-      }
-    })
   }
 
   function addDefaultLoggerContainer() {
@@ -278,11 +352,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setLockGrid,
         updateContainerTitle,
         updateContainerSize,
-        startEngineWithSource,
         removeContainer,
         logs,
         cachedDateKey,
-        followLogs
+        followLogs,
+        setFollowLogs,
+        isLiveSession,
+        handleLiveSessionStateChange,
+        sessionId
       } }
     >
       { children }

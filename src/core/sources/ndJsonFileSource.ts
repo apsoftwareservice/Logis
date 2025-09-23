@@ -1,6 +1,7 @@
 import type { InputSource, OnEvents } from "@/core/sources/InputSource"
 import type { LogEvent } from "@/core/engine"
 import { toast } from 'react-toastify'
+import { InputType } from '@/core/utils'
 
 /**
  * Stream/parse NDJSON file line-by-line to avoid huge allocations.
@@ -8,7 +9,7 @@ import { toast } from 'react-toastify'
  */
 export function createNdjsonFileSource(file: File): InputSource {
   return {
-    name: "file:ndjson",
+    type: InputType.ndjson,
     start: async (onEvents: OnEvents) => {
       const decoder = new TextDecoder()
       const reader = file.stream().getReader()

@@ -1,4 +1,5 @@
 import type { LogEvent } from "@/core/engine"
+import { InputType } from '@/core/utils'
 
 export type OnEvents = (events: LogEvent[]) => void;
 
@@ -7,7 +8,7 @@ export type OnEvents = (events: LogEvent[]) => void;
  * for reading/producing LogEvent[] and calling `onEvents`.
  */
 export interface InputSource {
-  name: string;
+  type: InputType
   start: (onEvents: OnEvents) => Promise<void> | void;
   stop?: () => void;
 }

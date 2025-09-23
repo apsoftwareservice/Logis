@@ -1,30 +1,38 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React from "react"
 
-import {Disc} from "lucide-react"
+import { Disc } from "lucide-react"
 import { useDashboard } from '@/context/DashboardContext'
-import {createEventSourceInput} from "@/core/sources/eventSource";
+import { motion } from 'framer-motion'
+import LottieAnimation from '@/components/ui/lottie/LottieAnimation'
+import animation from '@lottie/live-on.json'
+import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
+import { cn } from '@/lib/utils'
 
 export default function LiveSession() {
-  const {startEngineWithSource} = useDashboard()
-   const [on, setOn] = useState(false)
-
-    useEffect(() => {
-    if (on) {
-        startEngineWithSource(createEventSourceInput('http://localhost:4000/stream?token=1234'), true).then()
-    }
-    }, [on, startEngineWithSource])
+  const {isLiveSession, handleLiveSessionStateChange} = useDashboard()
 
   return (
-    <div className="relative">
+    <TooltipWrapper content={ <div>Live Session</div> } side={ 'bottom' }>
       <button
-        className="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-gray-700 h-9 w-9 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-        onClick={ () => setOn(!on) }
+        className={ cn("relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-gray-700 h-9 w-9 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white",
+          isLiveSession && 'border-red-800') }
+        onClick={ () => handleLiveSessionStateChange(!isLiveSession) }
         aria-label="Upload file"
       >
-        { on ? (<Disc fill={'red'} width={ 20 } height={ 20 }/>) : (<Disc width={ 20 } height={ 20 }/>) }
+        { isLiveSession ? (
+          <motion.div
+            initial={ {opacity: 0, y: 0} }
+            animate={ {opacity: 1, y: 0} }
+            transition={ {duration: 0.6, ease: 'easeOut'} }
+            className={ 'relative right-[12px]' }
+          >
+            <LottieAnimation animationJson={ animation } className={ '' } width={ '170%' } height={ '170%' }/>
+          </motion.div>
+        ) : (<Disc width={ 20 } height={ 20 }/>) }
+
       </button>
-    </div>
+    </TooltipWrapper>
   )
 }

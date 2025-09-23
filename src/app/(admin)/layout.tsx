@@ -3,10 +3,12 @@
 import { useSidebar } from "@/context/SidebarContext"
 import AppHeader from "@/layout/AppHeader"
 import React from "react"
+import { Slide, ToastContainer } from 'react-toastify'
+import { useTheme } from '@/context/ThemeContext'
 
 export default function AdminLayout({children}: { children: React.ReactNode; }) {
   const {isExpanded, isHovered, isMobileOpen} = useSidebar()
-
+  const {theme} = useTheme()
   // Dynamic class for main content margin based on sidebar state
   const mainContentMargin = isMobileOpen
     ? "ml-0"
@@ -25,6 +27,22 @@ export default function AdminLayout({children}: { children: React.ReactNode; }) 
         <AppHeader/>
         <div className="p-1">{ children }</div>
       </div>
+      <ToastContainer
+        position="top-center"
+        limit={ 3 }
+        autoClose={ 1500 }
+        hideProgressBar={ false }
+        newestOnTop={ true }
+        closeOnClick={ false }
+        closeButton={true}
+        rtl={ true }
+        pauseOnFocusLoss
+        draggable
+        stacked
+        pauseOnHover
+        theme={theme}
+        transition={ Slide }
+      />
     </div>
   )
 }

@@ -10,10 +10,11 @@ import Search from '@/components/header/Search'
 import AddContainer from '@/components/header/AddContainer'
 import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
+import Badge from '@/components/ui/badge/Badge'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
-  const {parseLogFile, index, handleOnSearch} = useDashboard()
+  const {parseLogFile, index, handleOnSearch, sessionId} = useDashboard()
   const {isMobileOpen, toggleSidebar, toggleMobileSidebar} = useSidebar()
 
   const handleToggle = () => {
@@ -83,8 +84,8 @@ const AppHeader: React.FC = () => {
                 alt="Logo"
                 width={ 100 }
                 height={ 40 }
-                style={{ width: 'auto', height: 'auto'}}
-                priority={true}
+                style={ {width: 'auto', height: 'auto'} }
+                priority={ true }
               />
               <Image
                 className="hidden dark:block max-w-[100px]"
@@ -92,8 +93,8 @@ const AppHeader: React.FC = () => {
                 alt="Logo"
                 width={ 100 }
                 height={ 40 }
-                style={{ width: 'auto', height: 'auto'}}
-                priority={true}
+                style={ {width: 'auto', height: 'auto'} }
+                priority={ true }
               />
             </>
           </Link>
@@ -103,12 +104,17 @@ const AppHeader: React.FC = () => {
                     options={ index?.current?.listTypes() ?? [] }/>
           </div>
         </div>
-        <div className={ `flex items-center justify-between w-full gap-2 pr-2 py-4 justify-end lg:px-0` }>
+        <div className={ `flex items-center w-full gap-2 pr-2 py-4 justify-end lg:px-0` }>
+          { sessionId && (
+            <Badge variant={ 'solid' } color={ 'dark' }>
+              { sessionId }
+            </Badge>
+          ) }
           <LiveSession/>
-          { index?.current && <GridController/>}
+          { index?.current && <GridController/> }
           <ThemeToggleButton/>
           <UploadFile onFileSelectAction={ parseLogFile }/>
-          { index?.current && <AddContainer/>}
+          { index?.current && <AddContainer/> }
         </div>
       </div>
     </header>

@@ -15,7 +15,9 @@ import {
 } from "./Timeline.utils"
 import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
 import { MarkObj } from 'rc-slider/es/Marks'
-import { PanelBottomClose, PanelBottomOpen } from 'lucide-react'
+import { PanelBottomClose, PanelBottomOpen, Unlink, Link } from 'lucide-react'
+import { useDashboard } from '@/context/DashboardContext'
+import { cn } from '@/lib/utils'
 
 /**
  * TimelineSlider — a movie-editor style time slider with zoom, pan, and markers.
@@ -34,7 +36,7 @@ import { PanelBottomClose, PanelBottomOpen } from 'lucide-react'
 
 
 
-const SPEEDS = [ 1, 8, 13, 21, 44 ] as const
+const SPEEDS = [ 1, 2, 5, 10, 15 ] as const
 
 export type TimelineSliderProps = {
   startDate: number; // epoch ms (inclusive bound)
@@ -66,7 +68,7 @@ export default function TimelineSlider({
                                          step = 0.01
                                        }: TimelineSliderProps) {
   const duration = Math.max(0, (endDate - startDate) / 1000) // seconds
-
+  const {setFollowLogs, followLogs} = useDashboard()
   const timestampToSeconds = useCallback((ts: number) => (ts - startDate) / 1000, [startDate]) // epoch ms -> seconds from start
   const secondsToTimestamp = useCallback((sec: number) => startDate + sec * 1000, [startDate])   // seconds from start -> epoch ms
 
@@ -77,8 +79,8 @@ export default function TimelineSlider({
   const rafRef = useRef<number | null>(null)
   const lastTimestampRef = useRef<number | null>(null)
 
-  const [ speedIdx, setSpeedIdx ] = useState(4) // default 1.0x
-  const playSpeed = SPEEDS[speedIdx]
+  const [ speedIdx, setSpeedIdx ] = useState(SPEEDS.length - 1) // default 1.0x
+
   const cycleSpeed = useCallback(() => {
     setSpeedIdx(i => (i + 1) % SPEEDS.length)
   }, [])
@@ -123,7 +125,7 @@ export default function TimelineSlider({
 
     const tick = (ts: number) => {
       if (!lastTimestampRef.current) lastTimestampRef.current = ts
-      const dtSec = ((ts - lastTimestampRef.current) / 1000) * Math.max(1, speedIdx)
+      const dtSec = ((ts - lastTimestampRef.current) / 1000) * Math.max(1, (speedIdx * 5))
       lastTimestampRef.current = ts
 
       const next = Math.min(duration, currentSecond + dtSec)
@@ -278,6 +280,7 @@ export default function TimelineSlider({
           <button
             className="px-2 py-1 rounded-xl bg-brand-blue hover:bg-brand-blue-dark text-white"
             onClick={ () => {
+              setFollowLogs(false)
               if (isPlaying) {
                 setIsPlaying(false)
               } else {
@@ -303,9 +306,9 @@ export default function TimelineSlider({
           <button
             className="px-2 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700"
             onClick={ cycleSpeed }
-            aria-label={ `Playback speed ${ playSpeed.toFixed(1) }x (click to change)` }
+            aria-label={ `Playback speed ${ SPEEDS[speedIdx].toFixed(1) }x (click to change)` }
             title="Change playback speed"
-          >{ playSpeed.toFixed(1) }×
+          >{ SPEEDS[speedIdx].toFixed(1) }×
           </button>
           <button
             className="px-2 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700"
@@ -348,6 +351,18 @@ export default function TimelineSlider({
           {/*    <PanelBottomOpen width={ 18 } height={ 18 }/>*/}
           {/*  ) }*/}
           {/*</button>*/}
+          <button
+            className={ cn("px-2 py-1 rounded-xl text-white",
+              followLogs ? 'bg-brand-blue hover:bg-brand-blue-dark' : 'bg-red-700 hover:bg-red-800') }
+            onClick={ () => setFollowLogs(!followLogs) }
+            aria-label="Reset view"
+          >
+            { followLogs ? (
+              <Link width={ 18 } height={ 18 }/>
+            ) : (
+              <Unlink width={ 18 } height={ 18 }/>
+            ) }
+          </button>
         </div>
       </div>
 

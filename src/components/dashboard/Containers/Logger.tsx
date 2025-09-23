@@ -8,11 +8,11 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-  SortingState,
+  SortingState, TableState,
   useReactTable
 } from "@tanstack/react-table"
 import { DashboardContainer, LogsModel } from '@/types/containers'
-import React, { useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   closestCenter,
@@ -195,10 +195,13 @@ export default function Logger({container}: { container: DashboardContainer<Logs
     overscan: 15
   })
 
+  // Extract column sizing state once per render to avoid complex expressions in deps
+  const columnSizingState = table.getState().columnSizing
+
   // Re-measure when column sizes, logs, or JSON beautification changes
   useEffect(() => {
     rowVirtualizer.measure()
-  }, [ logs, beautifyJSON, table.getState().columnSizing, rowVirtualizer ])
+  }, [ logs, beautifyJSON, columnSizingState, rowVirtualizer ])
 
   // Auto-scroll to the bottom when new logs are added
   useEffect(() => {
@@ -279,10 +282,10 @@ export default function Logger({container}: { container: DashboardContainer<Logs
             </Dropdown>
           </div>
         </div>
-        <div ref={ parentRef } className="h-full overflow-auto min-w-0 rounded-2xl border dark:border-gray-700">
+        <div ref={ parentRef } className="h-full overflow-auto min-w-0 rounded-2xl border dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="w-full">
             <DndContext sensors={ sensors } collisionDetection={ closestCenter } onDragEnd={ handleDragEnd }>
-              <div className="sticky top-0 z-10 dark:bg-gray-900 bg-blue-50 border-b dark:border-gray-600 flex">
+              <div className="sticky top-0 z-10 dark:bg-gray-900 bg-gray-100 border-b dark:border-gray-600 flex">
                 <SortableContext items={ columnOrder } strategy={ horizontalListSortingStrategy }>
                   { table.getHeaderGroups().map(headerGroup => (
                     headerGroup.headers.map((header, idx, arr) => (
