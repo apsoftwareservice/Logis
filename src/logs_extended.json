@@ -1,0 +1,724 @@
+[
+  {
+    "level": "info",
+    "message": "Server started",
+    "date": "2025-09-01T08:00:00.000",
+    "payload": [
+      {
+        "a": 1
+      },
+      {
+        "b": 2
+      }
+    ]
+  },
+  {
+    "level": "info",
+    "message": "Connected to database",
+    "date": "2025-09-01T08:00:01.000",
+    "payload": {}
+  },
+  {
+    "level": "debug",
+    "message": "Cache warmup started",
+    "date": "2025-09-01T08:00:02.000",
+    "payload": {}
+  },
+  {
+    "level": "info",
+    "message": "Cache warmup completed",
+    "date": "2025-09-01T08:00:03.000",
+    "payload": {}
+  },
+  {
+    "level": "info",
+    "message": "User registered",
+    "date": "2025-09-01T08:01:00.000",
+    "payload": {
+      "userId": "u-1001",
+      "country": "US"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User registered",
+    "date": "2025-09-01T08:02:00.000",
+    "payload": {
+      "userId": "u-1002",
+      "country": "UK"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Monthly target updated",
+    "date": "2025-09-01T08:02:30.000",
+    "payload": {
+      "target": 10000
+    }
+  },
+  {
+    "level": "info",
+    "message": "User registered",
+    "date": "2025-09-01T08:03:00.000",
+    "payload": {
+      "userId": "u-1003",
+      "country": "CA"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:04:00.000",
+    "payload": {
+      "id": 1,
+      "name": "MacBook Pro 13\u201d",
+      "variants": "2 Variants",
+      "category": "Laptop",
+      "price": "$2399.00",
+      "status": "Delivered",
+      "image": "/images/product/product-01.jpg"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:05:00.000",
+    "payload": {
+      "id": 2,
+      "name": "Apple Watch Ultra",
+      "variants": "1 Variant",
+      "category": "Watch",
+      "price": "$879.00",
+      "status": "Pending",
+      "image": "/images/product/product-02.jpg"
+    }
+  },
+  {
+    "level": "error",
+    "message": "Payment failed",
+    "date": "2025-09-01T08:06:00.000",
+    "payload": {
+      "orderId": "o-2003",
+      "userId": "u-1003",
+      "amount": 120.0,
+      "reason": "Card declined"
+    }
+  },
+  {
+    "level": "warn",
+    "message": "Retrying payment",
+    "date": "2025-09-01T08:06:05.000",
+    "payload": {
+      "orderId": "o-2003"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Payment succeeded",
+    "date": "2025-09-01T08:06:10.000",
+    "payload": {
+      "orderId": "o-2003"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order shipped",
+    "date": "2025-09-01T08:07:00.000",
+    "payload": {
+      "orderId": "o-2002",
+      "carrier": "UPS"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order delivered",
+    "date": "2025-09-01T08:08:00.000",
+    "payload": {
+      "orderId": "o-2002"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Monthly target updated",
+    "date": "2025-09-01T08:10:00.000",
+    "payload": {
+      "target": 50000
+    }
+  },
+  {
+    "level": "info",
+    "message": "Revenue recorded",
+    "date": "2025-09-01T08:11:00.000",
+    "payload": {
+      "amount": 2399.0
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Background job started",
+    "date": "2025-09-01T08:12:00.000",
+    "payload": {
+      "jobId": "job-01"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Background job completed",
+    "date": "2025-09-01T08:12:01.000",
+    "payload": {
+      "jobId": "job-01",
+      "durationMs": 350
+    }
+  },
+  {
+    "level": "info",
+    "message": "User login",
+    "date": "2025-09-01T08:13:00.000",
+    "payload": {
+      "userId": "u-1001"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User logout",
+    "date": "2025-09-01T08:15:00.000",
+    "payload": {
+      "userId": "u-1001"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User login",
+    "date": "2025-09-01T08:16:00.000",
+    "payload": {
+      "userId": "u-1002"
+    }
+  },
+  {
+    "level": "warn",
+    "message": "Unusual traffic detected",
+    "date": "2025-09-01T08:17:00.000",
+    "payload": {
+      "ip": "192.168.1.50"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer demographics updated",
+    "date": "2025-09-01T08:18:00.000",
+    "payload": {
+      "country": "US",
+      "count": 1500
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer demographics updated",
+    "date": "2025-09-01T08:18:05.000",
+    "payload": {
+      "country": "UK",
+      "count": 900
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer demographics updated",
+    "date": "2025-09-01T08:18:10.000",
+    "payload": {
+      "country": "CA",
+      "count": 600
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer demographics updated",
+    "date": "2025-09-01T08:18:15.000",
+    "payload": {
+      "country": "DE",
+      "count": 400
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer demographics updated",
+    "date": "2025-09-01T08:18:20.000",
+    "payload": {
+      "country": "IN",
+      "count": 382
+    }
+  },
+  {
+    "level": "info",
+    "message": "Monthly target updated",
+    "date": "2025-09-01T08:19:00.000",
+    "payload": {
+      "target": 80000
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:20:00.000",
+    "payload": {
+      "id": 3,
+      "name": "iPhone 15 Pro Max",
+      "variants": "2 Variants",
+      "category": "SmartPhone",
+      "price": "$1869.00",
+      "status": "Delivered",
+      "image": "/images/product/product-03.jpg"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:21:00.000",
+    "payload": {
+      "id": 4,
+      "name": "iPad Pro 3rd Gen",
+      "variants": "2 Variants",
+      "category": "Electronics",
+      "price": "$1699.00",
+      "status": "Canceled",
+      "image": "/images/product/product-04.jpg"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:22:00.000",
+    "payload": {
+      "id": 5,
+      "name": "AirPods Pro 2nd Gen",
+      "variants": "1 Variant",
+      "category": "Accessories",
+      "price": "$240.00",
+      "status": "Delivered",
+      "image": "/images/product/product-05.jpg"
+    }
+  },
+  {
+    "level": "error",
+    "message": "Order canceled",
+    "date": "2025-09-01T08:23:00.000",
+    "payload": {
+      "orderId": "o-2005",
+      "reason": "Inventory out of stock"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User password reset requested",
+    "date": "2025-09-01T08:24:00.000",
+    "payload": {
+      "userId": "u-1002",
+      "method": "email"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User password reset successful",
+    "date": "2025-09-01T08:25:00.000",
+    "payload": {
+      "userId": "u-1002"
+    }
+  },
+  {
+    "level": "warn",
+    "message": "High memory usage detected",
+    "date": "2025-09-01T08:26:00.000",
+    "payload": {
+      "usagePercent": 92
+    }
+  },
+  {
+    "level": "error",
+    "message": "Database connection lost",
+    "date": "2025-09-01T08:27:00.000",
+    "payload": {
+      "db": "orders-db",
+      "host": "db01.local"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Database reconnected",
+    "date": "2025-09-01T08:27:15.000",
+    "payload": {
+      "db": "orders-db",
+      "host": "db01.local"
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Email notification queued",
+    "date": "2025-09-01T08:28:00.000",
+    "payload": {
+      "userId": "u-1003",
+      "type": "order-shipped"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Email notification sent",
+    "date": "2025-09-01T08:28:02.000",
+    "payload": {
+      "userId": "u-1003",
+      "type": "order-shipped",
+      "status": "success"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Product added to wishlist",
+    "date": "2025-09-01T08:29:00.000",
+    "payload": {
+      "userId": "u-1001",
+      "productId": "p-3001"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Cart updated",
+    "date": "2025-09-01T08:30:00.000",
+    "payload": {
+      "userId": "u-1001",
+      "items": 3,
+      "totalValue": 456.5
+    }
+  },
+  {
+    "level": "info",
+    "message": "System health check completed",
+    "date": "2025-09-01T08:31:00.000",
+    "payload": {
+      "status": "ok",
+      "uptimeHours": 240
+    }
+  },
+  {
+    "level": "info",
+    "message": "Feature flag toggled",
+    "date": "2025-09-01T08:31:15.000",
+    "payload": {
+      "flag": "checkout_v2",
+      "enabled": true,
+      "actor": "admin-001"
+    }
+  },
+  {
+    "level": "debug",
+    "message": "A/B test assignment",
+    "date": "2025-09-01T08:31:25.000",
+    "payload": {
+      "userId": "u-1001",
+      "experiment": "pricing_banner",
+      "variant": "B"
+    }
+  },
+  {
+    "level": "info",
+    "message": "User login",
+    "date": "2025-09-01T08:31:35.000",
+    "payload": {
+      "userId": "u-1003",
+      "mfa": true
+    }
+  },
+  {
+    "level": "warn",
+    "message": "Suspicious login attempt",
+    "date": "2025-09-01T08:31:40.000",
+    "payload": {
+      "ip": "10.1.2.3",
+      "userId": "u-1004",
+      "reason": "Geo mismatch"
+    }
+  },
+  {
+    "level": "info",
+    "message": "2FA challenge issued",
+    "date": "2025-09-01T08:31:45.000",
+    "payload": {
+      "userId": "u-1003",
+      "method": "totp"
+    }
+  },
+  {
+    "level": "info",
+    "message": "2FA challenge passed",
+    "date": "2025-09-01T08:31:52.000",
+    "payload": {
+      "userId": "u-1003"
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Inventory reserved",
+    "date": "2025-09-01T08:32:00.000",
+    "payload": {
+      "sku": "SKU-AP-02",
+      "qty": 1,
+      "orderId": "o-2006"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order created",
+    "date": "2025-09-01T08:32:08.000",
+    "payload": {
+      "id": 6,
+      "name": "Apple TV 4K",
+      "variants": "1 Variant",
+      "category": "Electronics",
+      "price": "$129.00",
+      "status": "Pending",
+      "image": "/images/product/product-06.jpg"
+    }
+  },
+  {
+    "level": "error",
+    "message": "API rate limit exceeded",
+    "date": "2025-09-01T08:32:13.000",
+    "payload": {
+      "service": "payments",
+      "limit": 100,
+      "windowSec": 60
+    }
+  },
+  {
+    "level": "warn",
+    "message": "Backing off and retrying",
+    "date": "2025-09-01T08:32:15.000",
+    "payload": {
+      "service": "payments",
+      "retryInMs": 500
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Retry attempt",
+    "date": "2025-09-01T08:32:16.000",
+    "payload": {
+      "service": "payments",
+      "attempt": 1
+    }
+  },
+  {
+    "level": "info",
+    "message": "Payment authorized",
+    "date": "2025-09-01T08:32:17.000",
+    "payload": {
+      "orderId": "o-2006",
+      "amount": 129.0,
+      "provider": "Stripe"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order shipped",
+    "date": "2025-09-01T08:32:23.000",
+    "payload": {
+      "orderId": "o-2006",
+      "carrier": "FedEx"
+    }
+  },
+  {
+    "level": "warn",
+    "message": "Shipment exception",
+    "date": "2025-09-01T08:32:31.000",
+    "payload": {
+      "orderId": "o-2006",
+      "code": "ADDRESS_CORRECTION_REQUIRED"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Address correction received",
+    "date": "2025-09-01T08:32:43.000",
+    "payload": {
+      "orderId": "o-2006"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Order delivered",
+    "date": "2025-09-01T08:32:53.000",
+    "payload": {
+      "orderId": "o-2006"
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Cache eviction",
+    "date": "2025-09-01T08:33:03.000",
+    "payload": {
+      "namespace": "product",
+      "keys": 42,
+      "reason": "LRU"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Webhook received",
+    "date": "2025-09-01T08:33:09.000",
+    "payload": {
+      "source": "shopify",
+      "event": "inventory.update",
+      "deliveryId": "wh_001"
+    }
+  },
+  {
+    "level": "error",
+    "message": "Webhook processing failed",
+    "date": "2025-09-01T08:33:11.000",
+    "payload": {
+      "deliveryId": "wh_001",
+      "reason": "Validation error"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Webhook retried",
+    "date": "2025-09-01T08:33:14.000",
+    "payload": {
+      "deliveryId": "wh_001",
+      "attempt": 1
+    }
+  },
+  {
+    "level": "info",
+    "message": "Webhook processed",
+    "date": "2025-09-01T08:33:16.000",
+    "payload": {
+      "deliveryId": "wh_001",
+      "latencyMs": 128
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Cron started",
+    "date": "2025-09-01T08:33:26.000",
+    "payload": {
+      "name": "reconcile-ledger"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Refund issued",
+    "date": "2025-09-01T08:33:28.000",
+    "payload": {
+      "orderId": "o-2005",
+      "amount": 1699.0,
+      "reason": "Canceled"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Ledger reconciled",
+    "date": "2025-09-01T08:33:31.000",
+    "payload": {
+      "entries": 245,
+      "discrepancies": 0
+    }
+  },
+  {
+    "level": "warn",
+    "message": "High CPU usage detected",
+    "date": "2025-09-01T08:33:38.000",
+    "payload": {
+      "host": "api-1",
+      "usagePercent": 88
+    }
+  },
+  {
+    "level": "info",
+    "message": "Autoscaler scaled up",
+    "date": "2025-09-01T08:33:43.000",
+    "payload": {
+      "service": "api",
+      "from": 4,
+      "to": 6
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Search indexed",
+    "date": "2025-09-01T08:33:52.000",
+    "payload": {
+      "documents": 120,
+      "durationMs": 980
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer support ticket opened",
+    "date": "2025-09-01T08:34:00.000",
+    "payload": {
+      "ticketId": "t-5001",
+      "userId": "u-1002",
+      "category": "billing"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Customer support ticket resolved",
+    "date": "2025-09-01T08:34:06.000",
+    "payload": {
+      "ticketId": "t-5001",
+      "resolutionTimeMs": 420000
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Email bounce detected",
+    "date": "2025-09-01T08:34:11.000",
+    "payload": {
+      "userId": "u-1004",
+      "reason": "Mailbox full"
+    }
+  },
+  {
+    "level": "info",
+    "message": "Email address updated",
+    "date": "2025-09-01T08:34:16.000",
+    "payload": {
+      "userId": "u-1004"
+    }
+  },
+  {
+    "level": "info",
+    "message": "GDPR export requested",
+    "date": "2025-09-01T08:34:22.000",
+    "payload": {
+      "userId": "u-1003"
+    }
+  },
+  {
+    "level": "info",
+    "message": "GDPR export completed",
+    "date": "2025-09-01T08:34:30.000",
+    "payload": {
+      "userId": "u-1003",
+      "sizeMB": 12.4
+    }
+  },
+  {
+    "level": "debug",
+    "message": "Session invalidated",
+    "date": "2025-09-01T08:34:36.000",
+    "payload": {
+      "userId": "u-1002",
+      "reason": "logout_all"
+    }
+  },
+  {
+    "level": "info",
+    "message": "System health check completed",
+    "date": "2025-09-01T08:34:42.000",
+    "payload": {
+      "status": "ok",
+      "uptimeHours": 241
+    }
+  }
+]

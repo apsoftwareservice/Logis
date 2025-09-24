@@ -15,6 +15,9 @@ export function createEventSourceInput(url: string): InputSource {
       es.onmessage = (ev) => {
         try {
           const payload = JSON.parse(ev.data) as { type: string, data: any }
+          if (payload.type === 'connected') {
+            toast.success('Listening for events...')
+          }
           if (!payload?.data) {
             return
           }
@@ -26,7 +29,8 @@ export function createEventSourceInput(url: string): InputSource {
       }
       es.onerror = (err) => {
         toast.error(`EventSource error ${ err }`)
-        // Optionally call onEvents([]) or emit an error event through another channel
+        es?.close()
+        es = null
       }
     },
     stop: () => {

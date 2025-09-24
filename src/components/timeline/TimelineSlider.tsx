@@ -248,7 +248,7 @@ export default function TimelineSlider({
       //@ts-expect-error
       acc[key] = {
         style: {color: marker.color ?? "orange"},
-        label: <TooltipWrapper key={ marker.id } content={ marker.label } side={ "bottom" } className={ 'text-black' }>
+        label: <TooltipWrapper key={ marker.id } content={ marker.label } side={ "bottom" } >
           <div className="w-0 h-0 border-l-5 border-r-5 border-b-8 border-l-transparent border-r-transparent"
                style={ {borderBottomColor: marker.color ?? "#f59e0b"} }/>
         </TooltipWrapper>

@@ -30,7 +30,7 @@ interface EventSourceState {
 
 // Global state (shared across imports)
 declare global {
-    // eslint-disable-next-line no-var
+     
     var __esState: EventSourceState | undefined;
 }
 
@@ -48,7 +48,7 @@ const state = global.__esState!;
 const server = createServer(async (req, res) => {
     // Add CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS, POST');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     // Handle preflight
@@ -168,7 +168,7 @@ const server = createServer(async (req, res) => {
             }
 
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: true, delivered: delivered, reason: "no_active_socket" }));
+            res.end(JSON.stringify({ ok: true, delivered, reason: delivered ? null : "no_active_socket" }));
         });
         return;
     }

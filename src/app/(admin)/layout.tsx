@@ -30,12 +30,12 @@ export default function AdminLayout({children}: { children: React.ReactNode; }) 
       <ToastContainer
         position="top-center"
         limit={ 3 }
-        autoClose={ 1500 }
+        autoClose={ 3500 }
         hideProgressBar={ false }
         newestOnTop={ true }
         closeOnClick={ false }
         closeButton={true}
-        rtl={ true }
+        rtl={ false }
         pauseOnFocusLoss
         draggable
         stacked

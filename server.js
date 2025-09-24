@@ -84,7 +84,7 @@ var server = (0, http_1.createServer)(function (req, res) { return __awaiter(voi
             case 0:
                 // Add CORS headers
                 res.setHeader('Access-Control-Allow-Origin', '*');
-                res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS');
+                res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS, POST');
                 res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
                 // Handle preflight
                 if (req.method === 'OPTIONS') {
@@ -213,7 +213,7 @@ var server = (0, http_1.createServer)(function (req, res) { return __awaiter(voi
                                         }
                                     }
                                     res.writeHead(200, { "Content-Type": "application/json" });
-                                    res.end(JSON.stringify({ ok: true, delivered: delivered, reason: "no_active_socket" }));
+                                    res.end(JSON.stringify({ ok: true, delivered: delivered, reason: delivered ? null : "no_active_socket" }));
                                     return [2 /*return*/];
                             }
                         });

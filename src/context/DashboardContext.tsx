@@ -12,6 +12,7 @@ import { Layout } from 'react-grid-layout'
 import { capitalize, discoverKeys, getNestedValue, toMs } from '@/lib/utils'
 import { createEventSourceInput } from '@/core/sources/eventSource'
 import * as process from 'process'
+import { Option } from '@/components/ui/multiple-selector'
 
 type DashboardContextType = {
   index?: RefObject<EventTypeIndex<unknown> | null>
@@ -37,7 +38,6 @@ type DashboardContextType = {
   registerObserver: (observer: Observer) => void
   parseLogFile: (file: File) => Promise<void>
 
-  handleOnSearch: (value: string) => void
   updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
   removeContainer: (container: DashboardContainer<object>) => void
@@ -48,6 +48,9 @@ type DashboardContextType = {
   sessionId?: string
   isLiveSession: boolean
   handleLiveSessionStateChange: (state: boolean) => void
+
+  searchValues: Option[]
+  setSearchValues: React.Dispatch<React.SetStateAction<Option[]>>
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -62,6 +65,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
+  const [ searchValues, setSearchValues] = useState<Option[]>([])
   const [ sessionId, setSessionId ] = useState<string>()
   const [ isLiveSession, setIsLiveSession ] = useState(false)
   const [ logs, setLogs ] = useState<object[]>([])
@@ -100,14 +104,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   // Helper to register live session and get token
   async function registerLiveSession(key: string): Promise<{ token: string; reused: boolean }> {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/register`, {
+    const res = await fetch(`${ process.env.NEXT_PUBLIC_BASE_URL }/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key })
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key})
     })
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      throw new Error(`Register failed (${res.status}): ${text || res.statusText}`)
+      throw new Error(`Register failed (${ res.status }): ${ text || res.statusText }`)
     }
     return res.json()
   }
@@ -122,17 +126,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
     if (state) {
       if (engine.current) {
-        toast.info('Live Session started')
         engine.current.source.start(handleSourceEvents)
       } else {
-        setTimeframe({ start: 0, end: 0 })
+        setTimeframe({start: 0, end: 0})
         try {
-          const { token, reused } = await registerLiveSession(sessionId ?? crypto.randomUUID())
+          const {token, reused} = await registerLiveSession(sessionId ?? crypto.randomUUID())
           setSessionId(token)
-          toast.info(reused ? 'Live Session started (reused token)' : 'Live Session started')
-          await startEngineWithSource(createEventSourceInput(`${process.env.NEXT_PUBLIC_BASE_URL}/stream?token=${token}`))
+          await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL }/stream?token=${ token }`))
         } catch (e: any) {
-          toast.error(`${e}`)
+          toast.error(`${ e }`)
           setIsLiveSession(false)
         }
       }
@@ -198,13 +200,44 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         })
       }
     }
-  }, [followLogs, handleFirstEventParsing])
+  }, [ handleFirstEventParsing ])
 
   const startEngineWithSource = useCallback(async (source: InputSource) => {
     engine.current = new TimelineEngine(source)
     setFollowLogs(source.type === InputType.stream)
     engine.current.source.start(handleSourceEvents)
   }, [ handleSourceEvents ])
+
+  useEffect(() => {
+    const tempMarkers: Marker[] = []
+
+    if (searchValues.length > 0) {
+      searchValues.forEach(option => {
+        const value = option.value
+        let buckets = []
+
+        const bucket = index.current?.getBucket(value)
+
+        if (bucket) {
+          buckets = [ bucket ]
+        } else {
+          buckets = index.current?.getBucketsIncludingType(value) ?? []
+        }
+        tempMarkers.push(...buckets
+          .map(bucket =>
+            Array.from(bucket.timestampsMs).map(timestamp => ({
+              id: crypto.randomUUID(),
+              time: timestamp,
+              color: option.color,
+              label: value
+            }))
+          )
+          .flat())
+      })
+    }
+
+    setMarkers(tempMarkers)
+  }, [searchValues])
 
   useEffect(() => {
     requestSeek(currentTimestamp)
@@ -214,7 +247,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     if (followLogs && timeframe?.end != null) {
       setCurrentTimestamp(timeframe.end)
     }
-  }, [followLogs, timeframe?.end, setCurrentTimestamp])
+  }, [ followLogs, timeframe?.end, setCurrentTimestamp ])
 
   function registerObserver(observer: Observer) {
     engine.current?.register(observer)
@@ -273,31 +306,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
-  function handleOnSearch(value: string) {
-    let buckets = []
-
-    const bucket = index.current?.getBucket(value)
-
-    if (bucket) {
-      buckets = [ bucket ]
-    } else {
-      buckets = index.current?.getBucketsIncludingType(value) ?? []
-    }
-
-    const markers: Marker[] = buckets
-      .map(bucket =>
-        Array.from(bucket.timestampsMs).map(timestamp => ({
-          id: crypto.randomUUID(),
-          time: timestamp,
-          color: 'red',
-          label: value
-        }))
-      )
-      .flat()
-
-    setMarkers(markers)
-  }
-
   function updateContainerTitle(container: DashboardContainer<object>, title: string) {
     setContainers(containers => containers.map(_container => {
       if (_container.id === container.id) {
@@ -341,7 +349,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         registerObserver,
         parseLogFile,
         index,
-        handleOnSearch,
         clips,
         markers,
         setClips,
@@ -359,7 +366,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setFollowLogs,
         isLiveSession,
         handleLiveSessionStateChange,
-        sessionId
+        sessionId,
+        setSearchValues,
+        searchValues
       } }
     >
       { children }

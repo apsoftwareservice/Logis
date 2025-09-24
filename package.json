@@ -26,6 +26,7 @@
     "@tanstack/react-virtual": "^3.13.12",
     "apexcharts": "^5.3.5",
     "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
     "framer-motion": "^12.23.12",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.544.0",

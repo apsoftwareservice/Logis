@@ -14,7 +14,7 @@ import Badge from '@/components/ui/badge/Badge'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
-  const {parseLogFile, index, handleOnSearch, sessionId} = useDashboard()
+  const {parseLogFile, index, sessionId} = useDashboard()
   const {isMobileOpen, toggleSidebar, toggleMobileSidebar} = useSidebar()
 
   const handleToggle = () => {
@@ -33,8 +33,7 @@ const AppHeader: React.FC = () => {
     <header
       className="sticky top-0 flex w-full bg-white border-gray-200 z-50 dark:border-gray-800 dark:bg-gray-900 border-b">
       <div className="flex flex-row items-center justify-between grow px-3">
-        <div
-          className="flex items-center justify-between w-full gap-2 py-3 border-gray-200 dark:border-gray-800 justify-normal">
+        <div className="flex items-center w-full gap-2 py-3 border-gray-200 dark:border-gray-800 justify-normal">
 
           {/*Uncomment for menubar*/ }
           {/*<button*/ }
@@ -99,10 +98,7 @@ const AppHeader: React.FC = () => {
             </>
           </Link>
 
-          <div className="">
-            <Search onSearch={ handleOnSearch } onOptionClick={ handleOnSearch }
-                    options={ index?.current?.listTypes() ?? [] }/>
-          </div>
+          <Search options={ index?.current?.listTypes() ?? [] }/>
         </div>
         <div className={ `flex items-center w-full gap-2 pr-2 py-4 justify-end lg:px-0` }>
           { sessionId && (
