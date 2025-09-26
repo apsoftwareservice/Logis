@@ -1,20 +1,17 @@
 "use client"
 
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table"
 import { useDashboard } from '@/context/DashboardContext'
-import { AnimatePresence, motion } from "framer-motion"
 import { EventTypeIndex, Observer } from '@/core/engine'
-import React, { useState } from 'react'
-import { capitalize, getNestedValue } from '@/lib/utils'
-import { DashboardContainer, TableModel } from '@/types/containers'
+import React, { useMemo, useState } from 'react'
+import { DashboardContainer, LogsModel, TableModel } from '@/types/containers'
 import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigurationPopover"
-import Image from 'next/image'
 import BaseView from '@/components/dashboard/BaseView'
+import { ColumnDef } from '@tanstack/react-table'
+import GenericTable from '@/components/tables/GenericTable'
 
 export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
   const {registerObserver, index} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
-  const MotionRow = motion.tr
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: crypto.randomUUID(),
@@ -36,71 +33,36 @@ export default function TableView({container}: { container: DashboardContainer<T
     }
   })
 
+  const inferredColumns: ColumnDef<object, any>[] = useMemo(() => {
+    if (!item || (item as []).length === 0) {
+      return []
+    }
+
+    const keys = Object.keys(item[0]) as (keyof LogsModel)[]
+
+    return keys.map(k => ({
+      accessorKey: k,
+      header: k
+    }))
+
+  }, [ item ])
+
   return (
     <BaseView body={
-      <Table>
-        {/* Table Header */ }
-        <TableHeader className="border-gray-100 dark:border-gray-800 border-y">
-          <TableRow>
-            { container.data?.columns?.map((column, index) => (
-              <TableCell
-                key={ index }
-                isHeader
-                className="py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-              >
-                { capitalize(column.split('.').pop() ?? '') }
-              </TableCell>
-            )) }
-          </TableRow>
-        </TableHeader>
-
-        {/* Table Body */ }
-
-        <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-          <AnimatePresence initial={ false } mode="popLayout">
-            { item.map((item, index) => (
-              <MotionRow key={ index } layout className="overflow-hidden">
-                { container.data.columns.map((column, index) => (
-                  <TableCell key={ index } className="py-3 text-gray-500 text-theme-sm dark:text-gray-400">
-                    { /*@ts-ignore*/ }
-                    { (getNestedValue(item, column)?.includes('http') || getNestedValue(item, column)?.includes('/')) ? (
-
-                      <div className="flex items-center gap-3">
-                        <div className="h-[50px] w-[50px] overflow-hidden rounded-md">
-                          { /*@ts-ignore*/ }
-                          <Image src={ getNestedValue(item, column) }
-                                 width={ 50 }
-                                 height={ 50 }
-                                 className="h-[50px] w-[50px]"
-                                 alt={ 'image' }
-                          />
-                        </div>
-                      </div>
-
-                    ) : (
-                      <>
-                        { /*@ts-ignore*/ }
-                        { getNestedValue(item, column) }
-                      </>
-                    ) }
-                  </TableCell>
-                )) }
-              </MotionRow>
-            )) }
-          </AnimatePresence>
-        </TableBody>
-      </Table>
+      <GenericTable data={ item } columns={ inferredColumns } container={ container }/>
     }
-    configuration={
-      <>
-      { index?.current && (
-          <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
-            registerObserver(eventObserver(event, index.current!))
-          } }/>
-        )
-      }
-      </>
-    }
-    container={ container }></BaseView>
+              configuration={
+                <>
+                  { index?.current && (
+                    <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
+                      registerObserver(eventObserver(event, index.current!))
+                    } }/>
+                  )
+                  }
+                </>
+              }
+              container={ container }/>
   )
+
+
 }

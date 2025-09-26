@@ -44,7 +44,7 @@ export default function MonthlyTarget({container}: { container: DashboardContain
             show: false
           },
           value: {
-            fontSize: "36px",
+            fontSize: "30px",
             fontWeight: "600",
             offsetY: -40,
             color: "#1D2939",
@@ -105,8 +105,8 @@ export default function MonthlyTarget({container}: { container: DashboardContain
 
   return (
     <BaseView body={
-      <div className="h-full items-center flex px-5 pt-5 pb-11 align-middle justify-center">
-        <div className="relative ">
+      <div className="h-full items-center overflow-hidden flex px-5 pt-5 pb-11 align-middle justify-center">
+        <div className="relative">
           <div className="max-h-[330px]">
             <ReactApexChart
               options={ options }

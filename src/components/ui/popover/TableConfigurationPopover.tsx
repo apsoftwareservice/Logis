@@ -14,7 +14,7 @@ import Badge from '@/components/ui/badge/Badge'
 export interface TableConfigurationPopoverProps {
   index: EventTypeIndex
   container: DashboardContainer<TableModel>
-  onChange: (event: string, selectedColumns: string[]) => void
+  onChange: (event: string) => void
 }
 
 export function TableConfigurationPopover({index, container, onChange}: TableConfigurationPopoverProps) {
@@ -22,23 +22,6 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
   const [ isOpen, setIsOpen ] = useState(false)
 
   const [ event, setEvent ] = useState<string>(container.event)
-  const [ columnOptions, setColumnOptions ] = useState<NestedObject>()
-  const [ selectedColumns, setSelectedColumns ] = useState<string[]>(container.data.columns ?? [])
-  const [ dragIndex, setDragIndex ] = useState<number | null>(null)
-
-  useEffect(() => {
-    const bucket = index.getBucket(event)
-
-    if (bucket) {
-      const data = bucket?.first()
-
-      if (data) {
-        setColumnOptions(data as NestedObject)
-      } else {
-        toast.warning('Event has not data')
-      }
-    }
-  }, [ index, event ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -47,18 +30,7 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
           Configuration
         </div>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-80"
-        onMouseDown={ (e) => {
-          const target = e.target as HTMLElement
-          // If the mousedown originates from a draggable chip (or its children), allow default so drag can start
-          if (target?.getAttribute('draggable') === 'true' || target?.closest('[data-draggable-chip="true"]')) {
-            return
-          }
-          e.preventDefault()
-          e.stopPropagation()
-        } }
-      >
+      <PopoverContent className="w-80">
         <div className="grid gap-4 ">
           <div className="space-y-2">
             <h4 className="leading-none font-medium">Configuration</h4>
@@ -81,74 +53,6 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
             </Select>
           </div>
 
-          {/* Columns selector (add multiple) */ }
-          <div className="grid gap-2">
-            <Label>Columns</Label>
-
-            {/* Selected columns preview */ }
-            <div
-              className="flex flex-wrap gap-2"
-              onDragOver={ (e) => {
-                // Allow dropping anywhere in the chip area
-                e.preventDefault()
-              } }
-            >
-              { (selectedColumns ?? []).map((col, i) => (
-                <span
-                  key={ col }
-                  draggable
-                  data-draggable-chip
-                  onDragStart={ (e) => {
-                    setDragIndex(i)
-                    if (e.dataTransfer) {
-                      e.dataTransfer.effectAllowed = 'move'
-                      e.dataTransfer.setData('text/plain', String(i))
-                    }
-                  } }
-                  onDragOver={ (e) => {
-                    e.preventDefault()
-                    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
-                  } }
-                  onDrop={ (e) => {
-                    e.preventDefault()
-                    const fromIdxStr = e.dataTransfer?.getData('text/plain')
-                    const fromIdx = fromIdxStr ? parseInt(fromIdxStr, 10) : dragIndex
-                    if (fromIdx === null || fromIdx === undefined || fromIdx === i) return
-                    setSelectedColumns((prev) => {
-                      const next = [ ...(prev ?? []) ]
-                      const [ moved ] = next.splice(fromIdx as number, 1)
-                      next.splice(i, 0, moved)
-                      return next
-                    })
-                    setDragIndex(null)
-                  } }
-                  onDragEnd={ () => setDragIndex(null) }
-                  aria-selected={ dragIndex === i }
-                  role="option"
-                  className={ `py-1 text-xs cursor-move select-none ${
-                    dragIndex === i ? 'opacity-60' : ''
-                  }` }
-                  title="Drag to reorder"
-                >
-                       <Badge size="sm" color={ "primary" }>
-                  { col }
-                       </Badge>
-                </span>
-              )) }
-
-              { (!selectedColumns || selectedColumns.length === 0) && (
-                <span className="text-xs text-gray-500">No columns selected</span>
-              ) }
-            </div>
-
-            <div className="flex flex-col items-center gap-2">
-              { columnOptions && (
-                <NestedSelect data={ columnOptions } onSelect={ (value) => {
-                  setSelectedColumns((prev) => (prev?.includes(value) ? prev : [ ...(prev ?? []), value ]))
-                } }/>
-              ) }
-            </div>
-          </div>
         </div>
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button
@@ -158,17 +62,13 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
                 if (_container.event === container.event) {
                   return {
                     ..._container,
-                    event,
-                    data: {
-                      ..._container.data,
-                      columns: selectedColumns
-                    }
+                    event
                   }
                 }
                 return _container
               }))
 
-              onChange(event, selectedColumns)
+              onChange(event)
               setIsOpen(false)
             } }
           >

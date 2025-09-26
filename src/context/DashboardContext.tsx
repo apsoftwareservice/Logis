@@ -22,6 +22,7 @@ type DashboardContextType = {
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
 
   logs: object[]
+  setLogs: React.Dispatch<React.SetStateAction<object[]>>
 
   lockGrid: boolean
   setLockGrid: React.Dispatch<React.SetStateAction<boolean>>
@@ -368,7 +369,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         handleLiveSessionStateChange,
         sessionId,
         setSearchValues,
-        searchValues
+        searchValues,
+        setLogs
       } }
     >
       { children }

@@ -37,7 +37,7 @@ export default function Search({options = []}: {
 
   return (
     <form>
-      <div className="relative">
+      <div className="relative px-5">
         <div className="relative" onClick={ () => setIsOpen(!isOpen) }>
                 <span className="absolute -translate-y-1/2 left-4 top-1/2 pointer-events-none">
                  <SearchIcon className={ 'text-black dark:text-white' }/>

@@ -11,6 +11,7 @@ import AddContainer from '@/components/header/AddContainer'
 import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
 import Badge from '@/components/ui/badge/Badge'
+import { Separator } from '@/components/ui/separator'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
@@ -109,7 +110,6 @@ const AppHeader: React.FC = () => {
           <LiveSession/>
           { index?.current && <GridController/> }
           <ThemeToggleButton/>
-          <UploadFile onFileSelectAction={ parseLogFile }/>
           { index?.current && <AddContainer/> }
         </div>
       </div>

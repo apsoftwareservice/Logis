@@ -32,12 +32,15 @@ export function DashboardEvent({container}: { container: DashboardContainer<Even
 
       if (!eventBucket) return 0
 
-      const {timestampMs: _, data} = eventBucket.getLastEventAtOrBefore(timestampMs) ??
-      {timestampMs: new Float64Array(0)}
+      const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
+      const shouldBeCalled = !!lastEvent && valueRef.current.lastState !== undefined
 
-      if (eventDidCalled !== valueRef.current.lastState !== undefined) {
-        setEventDidCalled(valueRef.current.lastState !== undefined)
-      }
+      setEventDidCalled(prev => {
+        if (prev !== shouldBeCalled) {
+          return shouldBeCalled // update only if different
+        }
+        return prev // do not update → avoids UI re-render
+      })
     }
   })
 
@@ -51,7 +54,7 @@ export function DashboardEvent({container}: { container: DashboardContainer<Even
             animate={ {opacity: 1, y: 0} }
             transition={ {duration: 0.6, ease: 'easeOut'} }
           >
-            <LottieAnimation loop={ container.event !== '' || eventDidCalled } animationJson={ eventDidCalled ? success : loader }
+            <LottieAnimation loop={ !eventDidCalled && container.event !== '' } animationJson={ eventDidCalled ? success : loader }
                              className={ 'items-center justify-center align-middle flex' } height={ '60%' }
                              width={ '60%' }/>
           </motion.div>
