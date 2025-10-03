@@ -5,7 +5,7 @@ import GridShape from '@/components/common/GridShape'
 import { useDashboard } from '@/context/DashboardContext'
 
 export function MainWaitingView({animation, title}: { animation: any, title: string }) {
-  const { parseLogFile } = useDashboard()
+  const { parseFiles } = useDashboard()
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const handleButtonClick = () => {
@@ -13,9 +13,8 @@ export function MainWaitingView({animation, title}: { animation: any, title: str
   }
 
   const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
-    const file = e.target.files && e.target.files[0]
-    if (file && parseLogFile) {
-      parseLogFile(file).then()
+    if (e.target.files) {
+      parseFiles(Array.from(e.target.files)).then()
     }
     // Clear the input so selecting the same file again still triggers onChange
     e.currentTarget.value = ""

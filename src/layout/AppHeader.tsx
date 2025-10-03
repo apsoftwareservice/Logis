@@ -1,6 +1,5 @@
 "use client"
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton"
-import UploadFile from "@/components/header/UploadFile"
 import { useSidebar } from "@/context/SidebarContext"
 import Image from "next/image"
 import Link from "next/link"
@@ -11,13 +10,12 @@ import AddContainer from '@/components/header/AddContainer'
 import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
 import Badge from '@/components/ui/badge/Badge'
-import { Separator } from '@/components/ui/separator'
 import ExportPreset from '@/components/header/ExportPreset'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
-  const {parseLogFile, index, sessionId} = useDashboard()
-  const {isMobileOpen, toggleSidebar, toggleMobileSidebar} = useSidebar()
+  const {index, sessionId} = useDashboard()
+  const {toggleSidebar, toggleMobileSidebar} = useSidebar()
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
