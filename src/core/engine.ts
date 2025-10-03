@@ -23,6 +23,10 @@ export class TimelineEngine {
     }
   }
 
+  isRegistered(id: string): boolean {
+    return this.observers.some(o => o.id === id);
+  }
+
   moveTo(tMs: number) {
     for (const o of this.observers) o.renderAt(tMs)
   }
@@ -193,6 +197,48 @@ export class EventTypeIndex<TPayload = unknown> {
       this.bucketsByType.set(message, bucket)
     }
     bucket.appendSorted({timestampMs: new Date(date).valueOf(), data: event})
+  }
+
+  /**
+   * Append a batch of events (possibly unsorted) by grouping per type and sorting by timestamp
+   * before appending. This guarantees that each bucket preserves its in-order append contract.
+   */
+  appendAndSort(events: TPayload[], dateKey: string, messageKey: string): void {
+    if (!events || events.length === 0) return
+
+    // Group events by their message/type and precompute timestamps
+    const grouped = new Map<string, { timestampMs: number; data: TPayload }[]>()
+
+    for (const ev of events) {
+      const r = ev as unknown as Record<string, any>
+      const message = r[messageKey]
+      const date = r[dateKey]
+      if (message == null || date == null) continue
+      const ts = new Date(date).valueOf()
+      if (!Number.isFinite(ts)) continue
+
+      let arr = grouped.get(message)
+      if (!arr) {
+        arr = []
+        grouped.set(message, arr)
+      }
+      arr.push({ timestampMs: ts, data: ev })
+    }
+
+    // For each type, sort by timestamp and append to the corresponding bucket
+    for (const [message, arr] of grouped.entries()) {
+      arr.sort((a, b) => a.timestampMs - b.timestampMs)
+
+      let bucket = this.bucketsByType.get(message)
+      if (!bucket) {
+        bucket = EventBucket.empty<TPayload>(arr.length)
+        this.bucketsByType.set(message, bucket)
+      }
+
+      for (const pt of arr) {
+        bucket.appendSorted({ timestampMs: pt.timestampMs, data: pt.data })
+      }
+    }
   }
 
   /** Retrieve a bucket; undefined if type not present. */

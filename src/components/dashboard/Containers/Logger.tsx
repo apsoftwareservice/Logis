@@ -20,5 +20,5 @@ export default function Logger({container}: { container: DashboardContainer<Logs
 
   }, [ logs ])
 
-  return <GenericTable data={ logs } columns={ inferredColumns } container={ container }/>
+  return <GenericTable data={ logs } columns={ inferredColumns } container={ container } />
 }

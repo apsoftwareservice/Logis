@@ -30,16 +30,20 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
           Configuration
         </div>
       </PopoverTrigger>
-      <PopoverContent className="w-80">
+      <PopoverContent
+        className="w-80"
+        onMouseDown={ (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        } }
+      >
         <div className="grid gap-4 ">
           <div className="space-y-2">
             <h4 className="leading-none font-medium">Configuration</h4>
           </div>
 
           <div>
-            <Select value={ event }
-                    onValueChange={ (value) => setEvent(value) }
-            >
+            <Select value={ event } onValueChange={ (value) => setEvent(value) }>
               <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900">
                 <SelectValue placeholder="Select event"/>
               </SelectTrigger>
@@ -52,7 +56,6 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
               </SelectContent>
             </Select>
           </div>
-
         </div>
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button

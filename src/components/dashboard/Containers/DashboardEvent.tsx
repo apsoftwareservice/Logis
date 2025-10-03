@@ -71,6 +71,7 @@ export function DashboardEvent({container}: { container: DashboardContainer<Even
           />
         ) }
       </>
-    } container={ container }/>
+    } container={ container }
+      eventObserver={ eventObserver }/>
   )
 }

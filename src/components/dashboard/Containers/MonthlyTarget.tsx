@@ -129,6 +129,7 @@ export default function MonthlyTarget({container}: { container: DashboardContain
           />
         ) }
       </>
-    } container={ container }/>
+    } container={ container }
+              eventObserver={ eventObserver }/>
   )
 }

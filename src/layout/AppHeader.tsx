@@ -12,6 +12,7 @@ import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
 import Badge from '@/components/ui/badge/Badge'
 import { Separator } from '@/components/ui/separator'
+import ExportPreset from '@/components/header/ExportPreset'
 
 const AppHeader: React.FC = () => {
   const [ isApplicationMenuOpen, setApplicationMenuOpen ] = useState(false)
@@ -108,6 +109,7 @@ const AppHeader: React.FC = () => {
             </Badge>
           ) }
           <LiveSession/>
+          { index?.current && <ExportPreset/> }
           { index?.current && <GridController/> }
           <ThemeToggleButton/>
           { index?.current && <AddContainer/> }

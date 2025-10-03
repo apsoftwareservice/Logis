@@ -7,17 +7,25 @@ import { MoreHorizontal } from 'lucide-react'
 import { DashboardContainer } from '@/types/containers'
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
+import { EventTypeIndex, Observer } from '@/core/engine'
 
 export interface BaseViewProps {
   body: ReactElement
   className?: string
   configuration: ReactElement
   container: DashboardContainer<any>
+  eventObserver: (event: string, index: EventTypeIndex) => Observer
 }
 
-export default function BaseView({body, className, configuration, container}: BaseViewProps) {
-  const {updateContainerTitle, lockGrid, removeContainer} = useDashboard()
+export default function BaseView({body, className, configuration, container, eventObserver}: BaseViewProps) {
+  const {updateContainerTitle, lockGrid, removeContainer, containers, index, isRegisteredObserver, registerObserver} = useDashboard()
   const [ isDropdownOpen, setIsDropdownOpen ] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (containers?.length > 0 && index?.current && !isRegisteredObserver(container.id)) {
+      registerObserver(eventObserver(container.event, index.current!))
+    }
+  }, [container, containers, eventObserver, index, isRegisteredObserver, registerObserver])
 
   return (
     <div

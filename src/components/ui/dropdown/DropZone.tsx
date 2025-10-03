@@ -147,7 +147,7 @@ const DropZone: React.FC<DropZoneProps> = ({onFilesDropped, prompt}) => {
         pointerEvents: "auto"
       } }
     >
-      <div className={ 'dark:bg-gray-900 border-gray-700 py-10 px-8 border border-dashed' }
+      <div className={ 'bg-white dark:bg-gray-900 border-gray-700 py-10 px-8 border border-dashed' }
            style={ {
              minWidth: 320,
              minHeight: 160,

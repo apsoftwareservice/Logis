@@ -1,13 +1,13 @@
 "use client"
 import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState } from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/core/engine'
-import { detectFileFormat, InputType } from '@/core/utils'
+import { detectFileFormat, InputType, isNewEvent } from '@/core/utils'
 import { InputSource } from '@/core/sources/InputSource'
 import { createFullJsonFileSource } from '@/core/sources/jsonFileSource'
 import { createNdjsonFileSource } from '@/core/sources/ndJsonFileSource'
 import { toast } from 'react-toastify'
 import { Clip, Marker } from '@/components/timeline/TimeLine.types'
-import { ContainerType, DashboardContainer, DefaultContainerSize } from '@/types/containers'
+import { ContainerType, DashboardContainer, DefaultContainerSize, isPresetJSON } from '@/types/containers'
 import { Layout } from 'react-grid-layout'
 import { capitalize, discoverKeys, getNestedValue, toMs } from '@/lib/utils'
 import { createEventSourceInput } from '@/core/sources/eventSource'
@@ -36,8 +36,9 @@ type DashboardContextType = {
   currentTimestamp: number
   setCurrentTimestamp: React.Dispatch<React.SetStateAction<number>>
 
+  isRegisteredObserver: (id: string) => boolean
   registerObserver: (observer: Observer) => void
-  parseLogFile: (file: File) => Promise<void>
+  parseFiles: (files: File[]) => Promise<void>
 
   updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
@@ -66,7 +67,7 @@ export const useDashboard = () => {
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
 
-  const [ searchValues, setSearchValues] = useState<Option[]>([])
+  const [ searchValues, setSearchValues ] = useState<Option[]>([])
   const [ sessionId, setSessionId ] = useState<string>()
   const [ isLiveSession, setIsLiveSession ] = useState(false)
   const [ logs, setLogs ] = useState<object[]>([])
@@ -209,6 +210,32 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     engine.current.source.start(handleSourceEvents)
   }, [ handleSourceEvents ])
 
+  function appendNewEventsFromSource(source: InputSource) {
+    source.start((events) => {
+      if (!events || events.length <= 0) {
+        toast.error('No logs found')
+        source.stop?.()
+        return
+      }
+
+      const {dateKey, messageKey} = discoverKeys(events[0])
+
+      if (dateKey !== cachedDateKey.current || messageKey !== cachedMessageKey.current) {
+        toast.error(`The date key "${ dateKey }" mast match the already existing key "${ cachedDateKey }", same for the message key`)
+        source.stop?.()
+        return
+      }
+
+      index.current?.appendAndSort(events, cachedDateKey.current, cachedMessageKey.current)
+      setLogs(prev => {
+        const newEvents: LogEvent[] = events.filter(event => isNewEvent(event, dateKey, messageKey, index.current))
+        return prev.concat(newEvents)
+      })
+
+      source.stop?.()
+    })
+  }
+
   useEffect(() => {
     const tempMarkers: Marker[] = []
 
@@ -238,7 +265,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }
 
     setMarkers(tempMarkers)
-  }, [searchValues])
+  }, [ searchValues ])
 
   useEffect(() => {
     requestSeek(currentTimestamp)
@@ -250,49 +277,75 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }
   }, [ followLogs, timeframe?.end, setCurrentTimestamp ])
 
+  function isRegisteredObserver(id: string): boolean {
+    return engine.current?.isRegistered(id) ?? false
+  }
+
   function registerObserver(observer: Observer) {
     engine.current?.register(observer)
   }
 
+  async function parseFiles(files: File[]) {
+    files.forEach(file => {
+      try {
+        parseLogFile(file)
+      } catch (error) {
+        toast.error(`${ error }`)
+      }
+    })
+  }
+
   async function parseLogFile(file: File) {
-    try {
-      const format = await detectFileFormat(file)
-      let source: InputSource
+    const format = await detectFileFormat(file)
+    let source: InputSource
 
-      switch (format) {
-        case InputType.json:
-          source = createFullJsonFileSource(file)
-          break
+    switch (format) {
+      case InputType.json: {
+        const text = await file.text()
+        const json = JSON.parse(text)
 
-        case InputType.ndjson:
-          source = createNdjsonFileSource(file)
-          break
+        if (isPresetJSON(json)) {
+          setContainers(json)
+          toast.success(`Loaded preset ${file.name}`)
+          return
+        }
 
-        default:
-          // fallback: try full JSON then NDJSON by reading text
-          const text = await file.text()
-          try {
-            const parsed = JSON.parse(text)
-            source = {
-              type: InputType.unknown,
-              start: (onEvents) => onEvents(parsed)
-            }
-          } catch {
-            // treat as NDJSON lines
-            source = {
-              type: InputType.ndjson,
-              start: (onEvents) => {
-                const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-                const parsed = lines.map(l => JSON.parse(l) as LogEvent)
-                onEvents(parsed)
-              }
-            }
-          }
+        source = createFullJsonFileSource(json)
+        break
       }
 
+      case InputType.ndjson:
+        source = createNdjsonFileSource(file)
+        break
+
+      default:
+        // fallback: try full JSON then NDJSON by reading text
+        const text = await file.text()
+        try {
+          const parsed = JSON.parse(text)
+          source = {
+            type: InputType.unknown,
+            start: (onEvents) => onEvents(parsed)
+          }
+        } catch {
+          // treat as NDJSON lines
+          source = {
+            type: InputType.ndjson,
+            start: (onEvents) => {
+              const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+              const parsed = lines.map(l => JSON.parse(l) as LogEvent)
+              onEvents(parsed)
+            }
+          }
+        }
+    }
+
+    if (engine.current) {
+      if (engine.current.source !== source) {
+        appendNewEventsFromSource(source)
+      }
+    } else {
       await startEngineWithSource(source)
-    } catch (error) {
-      toast.error(`${ error }`)
     }
   }
 
@@ -348,7 +401,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setCurrentTimestamp,
         timeframe,
         registerObserver,
-        parseLogFile,
+        parseFiles,
         index,
         clips,
         markers,
@@ -370,7 +423,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         sessionId,
         setSearchValues,
         searchValues,
-        setLogs
+        setLogs,
+        isRegisteredObserver
       } }
     >
       { children }

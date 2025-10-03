@@ -28,7 +28,6 @@ export default function TableView({container}: { container: DashboardContainer<T
       if (payloads && Array.isArray(payloads)) {
         const next = payloads as object[]
         setItem([ ...next ])
-
       }
     }
   })
@@ -61,8 +60,8 @@ export default function TableView({container}: { container: DashboardContainer<T
                   }
                 </>
               }
-              container={ container }/>
+              container={ container }
+              eventObserver={ eventObserver }
+    />
   )
-
-
 }

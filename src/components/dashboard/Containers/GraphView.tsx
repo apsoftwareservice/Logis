@@ -9,6 +9,7 @@ import { EventTypeIndex, Observer } from '@/core/engine'
 import { DashboardContainer, StatisticsModel } from '@/types/containers'
 import { getNestedValue, parseNumeric } from '@/lib/utils'
 import BaseView from '@/components/dashboard/BaseView'
+import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -79,28 +80,36 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
   const {index, registerObserver} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
+  const [ isBarChart, setIsBarChart ] = useState<boolean>(false)
 
   /**
    * Tracks a short string signature of the last emitted series to prevent unnecessary `setSeries` calls.
    */
   const seriesSigRef = useRef<string>("")
 
+  const eventSeriesRef = useRef<Record<string, StatisticsData[]>>({})
+
   /**
    * Holds the latest axis names across renders so callbacks (like `renderAt`) don’t capture stale values.
    */
   const axesRef = useRef({
-    xAxisParameterName: container.data.xAxisParameterName,
-    yAxisParameterName: container.data.yAxisParameterName
+    series: container.data.series
   })
 
   useEffect(() => {
     axesRef.current = {
-      xAxisParameterName: container.data.xAxisParameterName,
-      yAxisParameterName: container.data.yAxisParameterName
+      series: container.data.series
     }
   }, [ container ])
 
-  const options: ApexOptions = {
+  useEffect(() => {
+    if (!index?.current) return
+    const seriesArr = (container.data.series ?? []) as Array<{ event: string }>
+    const uniqueEvents = Array.from(new Set(seriesArr.map(s => s.event))).filter(Boolean) as string[]
+    uniqueEvents.forEach(ev => registerObserver(eventObserver(ev, index.current!)))
+  }, [ container, index, registerObserver ])
+
+  const areaOptions: ApexOptions = {
     legend: {
       show: false, // Hide legend
       position: "top",
@@ -110,7 +119,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     chart: {
       fontFamily: "Outfit, sans-serif",
       // height: 310,
-      type: "line", // Set the chart type to 'line'
+      type: "area", // Set the chart type to 'line'
       toolbar: {
         show: true // Hide chart toolbar
       }
@@ -185,42 +194,134 @@ export default function GraphView({container}: { container: DashboardContainer<S
     }
   }
 
-  /**
-   * Factory that creates an observer for a specific event type.
-   * It reads the latest payloads up to `timestampMs`, converts them into chart points,
-   * computes a signature, and updates the chart only when the data actually changes.
-   */
+  const barOptions: ApexOptions = {
+    colors: [ "#465fff", "#81d552" ],
+    chart: {
+      fontFamily: "Outfit, sans-serif",
+      type: "bar",
+      toolbar: {
+        show: false
+      }
+    },
+    plotOptions: {
+      bar: {
+        horizontal: false,
+        borderRadius: 5,
+        borderRadiusApplication: "end"
+      }
+    },
+    dataLabels: {
+      enabled: false
+    },
+    stroke: {
+      show: true,
+      width: 4,
+      colors: [ "transparent" ]
+    },
+    xaxis: {
+      axisBorder: {
+        show: true
+      },
+      axisTicks: {
+        show: true
+      }
+    },
+    legend: {
+      show: true,
+      position: "top",
+      horizontalAlign: "left",
+      fontFamily: "Outfit"
+    },
+    yaxis: {
+      title: {
+        text: undefined
+      }
+    },
+    grid: {
+      yaxis: {
+        lines: {
+          show: true
+        }
+      }
+    },
+    fill: {
+      opacity: 1
+    },
+
+    tooltip: {
+      x: {
+        show: false
+      },
+      y: {
+        formatter: (val: number) => `${ val }`
+      }
+    }
+  }
+
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: crypto.randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
-      const eventBucket = index.getBucket(event)
+      // Use the current configured series and keep only those for this event
+      const configured = (axesRef.current.series ?? []) as Array<{
+        event: string;
+        xAxisParameterName: string;
+        yAxisParameterName: string;
+      }>
+      const perEventConfig = configured.filter(s => s.event === event)
 
-      if (!eventBucket) return 0
+      const bucket = index.getBucket(event)
 
-      const {timestampsMs, payloads} =
-      eventBucket.getEventsInExclusiveInclusiveRange(Number.NEGATIVE_INFINITY, timestampMs) ??
+      if (!bucket || perEventConfig.length === 0) {
+        // If this event no longer has series, clear it from the map and update
+        if (eventSeriesRef.current[event]) {
+          delete eventSeriesRef.current[event]
+          const merged = Object.values(eventSeriesRef.current).flat()
+          const signature = merged
+            .map(ds => computeSeriesSignature(ds.name, ds.data as any))
+            .join('||')
+          if (signature !== seriesSigRef.current) {
+            seriesSigRef.current = signature
+            setSeries(merged)
+          }
+        }
+        return 0
+      }
+
+      const {payloads} =
+      bucket.getEventsInExclusiveInclusiveRange(Number.NEGATIVE_INFINITY, timestampMs) ??
       {timestampsMs: new Float64Array(0), payloads: []}
 
-      if (payloads && Array.isArray(payloads)) {
-        const axisNames: AxisNames = {
-          xAxisParameterName: axesRef.current.xAxisParameterName,
-          yAxisParameterName: axesRef.current.yAxisParameterName
-        }
+      const perEventSeries: StatisticsData[] = []
 
-        const dataPoints = extractDataPointsFromPayloads(payloads as unknown[], axisNames)
-        const signature = computeSeriesSignature(axisNames.yAxisParameterName, dataPoints)
-
-        if (signature !== seriesSigRef.current) {
-          seriesSigRef.current = signature
-          setSeries([
-            {
-              name: String(axisNames.yAxisParameterName),
-              data: dataPoints
-            }
-          ])
+      if (Array.isArray(payloads)) {
+        for (const s of perEventConfig) {
+          const dataPoints = extractDataPointsFromPayloads(payloads as unknown[], {
+            xAxisParameterName: s.xAxisParameterName,
+            yAxisParameterName: s.yAxisParameterName
+          })
+          perEventSeries.push({
+            name: String(s.yAxisParameterName || s.event),
+            data: dataPoints
+          })
         }
       }
+
+      // Save series computed for this event
+      eventSeriesRef.current[event] = perEventSeries
+
+      // Merge all events' series and update chart if changed
+      const merged = Object.values(eventSeriesRef.current).flat()
+      const signature = merged
+        .map(ds => computeSeriesSignature(ds.name, ds.data as any))
+        .join('||')
+
+      if (signature !== seriesSigRef.current) {
+        seriesSigRef.current = signature
+        setSeries(merged)
+      }
+
+      return 0
     }
   })
 
@@ -229,20 +330,31 @@ export default function GraphView({container}: { container: DashboardContainer<S
       <div className="max-w-full w-full h-auto custom-scrollbar overflow-hidden">
         <div className="min-h-0">
           <ReactApexChart
-            options={ options }
+            key={ "area" }
+            options={ {...areaOptions} }
             series={ series }
-            type="area"
+            type={ "area" }
           />
         </div>
       </div>
     } configuration={
       <>
         { index?.current && (
-          <GraphConfigurationPopover index={ index.current } container={ container } onChange={ (event) => {
-            registerObserver(eventObserver(event, index.current!))
-          } }/>
+          <GraphConfigurationPopover
+            index={ index.current }
+            container={ container }
+            onChange={ () => {
+              // Observers are registered per-event via effect when container updates
+            } }/>
         ) }
+        <DropdownItem
+          onItemClick={ () => setIsBarChart(!isBarChart) }
+          className="flex w-full font-normal text-left rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-red-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        >
+          Toggle View
+        </DropdownItem>
       </>
-    } container={ container }/>
+    } container={ container }
+              eventObserver={ eventObserver }/>
   )
 }

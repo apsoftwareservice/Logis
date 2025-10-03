@@ -8,9 +8,7 @@ import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
 import DropZone from '@/components/ui/dropdown/DropZone'
-import { DashboardMetrics } from '@/components/dashboard/Containers/DashboardMetrics'
-import MonthlySalesChart from '@/components/dashboard/Containers/MonthlySalesChart'
-import DemographicCard from '@/components/dashboard/Containers/DemographicCard'
+import { DashboardState } from '@/components/dashboard/Containers/DashboardState'
 import MonthlyTarget from '@/components/dashboard/Containers/MonthlyTarget'
 import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
 import cat from '@lottie/cat.json'
@@ -22,13 +20,13 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 const gridSize = {lg: 19, md: 16, sm: 14, xs: 6, xxs: 2}
 
 export default function Dashboard() {
-  const {containers, lockGrid, index, updateContainerSize, parseLogFile} = useDashboard()
+  const {containers, lockGrid, index, updateContainerSize, parseFiles} = useDashboard()
 
   return (
     <div className="relative h-full w-full flex flex-col">
       { !index?.current ? (
-        <div className={'min-h-[calc(100vh-100px)] items-center w-full flex'}>
-          <MainWaitingView animation={cat} title={"Drag log file, or start Live Session"}/>
+        <div className={ 'min-h-[calc(100vh-100px)] items-center w-full flex' }>
+          <MainWaitingView animation={ cat } title={ "Drag log file, or start Live Session" }/>
         </div>
       ) : (
         <>
@@ -63,11 +61,11 @@ export default function Dashboard() {
                       <TableView container={ container }/>
                     </div>
                   )
-                case ContainerType.metrics:
+                case ContainerType.state:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <DashboardMetrics container={ container }/>
+                      <DashboardState container={ container }/>
                     </div>
                   )
                 case ContainerType.event:
@@ -75,19 +73,6 @@ export default function Dashboard() {
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
                       <DashboardEvent container={ container }/>
-                    </div>
-                  )
-                case ContainerType.sales:
-                  return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
-                      {/* @ts-expect-error ignore */ }
-                      <MonthlySalesChart container={ container }/>
-                    </div>
-                  )
-                case ContainerType.card:
-                  return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
-                      <DemographicCard container={ container }/>
                     </div>
                   )
                 case ContainerType.target:
@@ -100,7 +85,7 @@ export default function Dashboard() {
                 case ContainerType.logs:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
-                      <Logger container={container}/>
+                      <Logger container={ container }/>
                     </div>
                   )
                 default:
@@ -114,10 +99,10 @@ export default function Dashboard() {
             </div>
           ) }
         </>
-      )}
+      ) }
 
       <DropZone onFilesDropped={ (files) => {
-        parseLogFile(files[0]).then()
+        parseFiles(files).then()
       } }/>
     </div>
   )
