@@ -74,7 +74,27 @@ docker run -p 3000:3000 -p 4000:4000 ghcr.io/apsoftwareservice/logis:latest
 
 Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Features
+## Usage
+
+Logis accepts **JSON log files** where each log entry is a separate object.  
+Each log must contain:
+- A valid **date value** (the key name does not matter).
+- A **message** key representing the event name.
+
+You can **drag and drop** log files into the dashboard, and Logis will automatically add them and resort the timeline.
+
+### Live Session Mode (🐳 Docker)
+
+When running Logis locally with Docker, you can activate **Live Session mode**:
+
+1. Click **"Live session"** in the UI.
+2. Behind the scenes, a `POST` call is sent to the server on port `4000` to register a new client.
+3. You’ll receive a **token**, which you can use to send live log events.
+4. The Web UI will then display these logs in real time.
+
+This enables you to stream and visualize logs as they happen, in addition to replaying historical data.
+
+## 🔥 Features
 
 Logis provides the building blocks for time-travel debugging dashboards:
 
@@ -93,11 +113,14 @@ Logis provides the building blocks for time-travel debugging dashboards:
 - Monitoring session activity or feature usage.
 - Teaching event-sourced systems and time-travel debugging.
 
-## License
+## 📃 License
 
 Logis is released under the MIT License.
 
-## Support
+You understand that by using Logis on our servers we do not offer any support or guarantee that your data is secure. Use at your own risk.  
+If you want privacy protection, use the local Docker image or start a local server inside your corporation.
+
+## ❤️‍🔥 Support
 
 If Logis helps you debug or build faster, please ⭐ star the repository.
 Your support helps us improve and maintain this project!
