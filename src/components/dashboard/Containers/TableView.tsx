@@ -47,21 +47,20 @@ export default function TableView({container}: { container: DashboardContainer<T
   }, [ item ])
 
   return (
-    <BaseView body={
-      <GenericTable data={ item } columns={ inferredColumns } container={ container }/>
-    }
-              configuration={
-                <>
-                  { index?.current && (
-                    <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
-                      registerObserver(eventObserver(event, index.current!))
-                    } }/>
-                  )
-                  }
-                </>
-              }
-              container={ container }
-              eventObserver={ eventObserver }
+    <BaseView
+      body={ <GenericTable data={ item } columns={ inferredColumns } container={ container }/> }
+      configuration={
+        <>
+          { index?.current && (
+            <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
+              registerObserver(eventObserver(event, index.current!))
+            } }/>
+          )
+          }
+        </>
+      }
+      container={ container }
+      eventObserver={ eventObserver }
     />
   )
 }

@@ -14,7 +14,7 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false
 })
 
-export default function MonthlyTarget({container}: { container: DashboardContainer<TargetModel> }) {
+export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
   const {index, registerObserver} = useDashboard()
   const [ series, setSeries ] = useState([ 0 ])
   const options: ApexOptions = {

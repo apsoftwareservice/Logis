@@ -24,7 +24,7 @@ export class TimelineEngine {
   }
 
   isRegistered(id: string): boolean {
-    return this.observers.some(o => o.id === id);
+    return this.observers.some(o => o.id === id)
   }
 
   moveTo(tMs: number) {
@@ -89,10 +89,8 @@ export class EventBucket<TPayload = unknown> {
   }
 
   /** Lightweight view of events in (startTimeMs, endTimeMs] (timestamps are a subarray). */
-  getEventsInExclusiveInclusiveRange(
-    startTimeMs: number,
-    endTimeMs: number
-  ): { timestampsMs: Float64Array; payloads: (TPayload | undefined)[] } {
+  getEventsInExclusiveInclusiveRange(startTimeMs: number, endTimeMs: number):
+    { timestampsMs: Float64Array; payloads: (TPayload | undefined)[] } {
     if (this.length === 0 || endTimeMs <= startTimeMs) {
       return {timestampsMs: new Float64Array(0), payloads: []}
     }
@@ -222,11 +220,11 @@ export class EventTypeIndex<TPayload = unknown> {
         arr = []
         grouped.set(message, arr)
       }
-      arr.push({ timestampMs: ts, data: ev })
+      arr.push({timestampMs: ts, data: ev})
     }
 
     // For each type, sort by timestamp and append to the corresponding bucket
-    for (const [message, arr] of grouped.entries()) {
+    for (const [ message, arr ] of grouped.entries()) {
       arr.sort((a, b) => a.timestampMs - b.timestampMs)
 
       let bucket = this.bucketsByType.get(message)
@@ -236,7 +234,7 @@ export class EventTypeIndex<TPayload = unknown> {
       }
 
       for (const pt of arr) {
-        bucket.appendSorted({ timestampMs: pt.timestampMs, data: pt.data })
+        bucket.appendSorted({timestampMs: pt.timestampMs, data: pt.data})
       }
     }
   }

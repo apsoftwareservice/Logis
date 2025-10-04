@@ -2,12 +2,12 @@
 
 import React, { useMemo } from "react"
 import { ColumnDef } from "@tanstack/react-table"
-import GenericTable from "../../tables/GenericTable"
 import { useDashboard } from '@/context/DashboardContext'
 import { DashboardContainer, LogsModel } from "@/types/containers"
+import GenericTable from '@/components/tables/GenericTable'
 
 
-export default function Logger({container}: { container: DashboardContainer<LogsModel> }) {
+export default function LoggerView({container}: { container: DashboardContainer<LogsModel> }) {
   const {logs} = useDashboard()
 
   const inferredColumns: ColumnDef<object, any>[] = useMemo(() => {

@@ -8,12 +8,12 @@ import { useDashboard } from '@/context/DashboardContext'
 import { ContainerType } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
 import DropZone from '@/components/ui/dropdown/DropZone'
-import { DashboardState } from '@/components/dashboard/Containers/DashboardState'
-import MonthlyTarget from '@/components/dashboard/Containers/MonthlyTarget'
+import { StateView } from '@/components/dashboard/Containers/StateView'
+import TargetView from '@/components/dashboard/Containers/TargetView'
 import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
 import cat from '@lottie/cat.json'
-import Logger from '@/components/dashboard/Containers/Logger'
-import { DashboardEvent } from '@/components/dashboard/Containers/DashboardEvent'
+import LoggerView from '@/components/dashboard/Containers/LoggerView'
+import { EventView } from '@/components/dashboard/Containers/EventView'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -65,27 +65,27 @@ export default function Dashboard() {
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <DashboardState container={ container }/>
+                      <StateView container={ container }/>
                     </div>
                   )
                 case ContainerType.event:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <DashboardEvent container={ container }/>
+                      <EventView container={ container }/>
                     </div>
                   )
                 case ContainerType.target:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <MonthlyTarget container={ container }/>
+                      <TargetView container={ container }/>
                     </div>
                   )
                 case ContainerType.logs:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
-                      <Logger container={ container }/>
+                      <LoggerView container={ container }/>
                     </div>
                   )
                 default:

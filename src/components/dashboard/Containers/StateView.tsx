@@ -6,7 +6,7 @@ import BaseView from '@/components/dashboard/BaseView'
 import { MetricConfigurationPopover } from '@/components/ui/popover/MetricConfigurationPopover'
 import { getNestedValue } from '@/lib/utils'
 
-export function DashboardState({container}: { container: DashboardContainer<StateModel> }) {
+export function StateView({container}: { container: DashboardContainer<StateModel> }) {
   const {registerObserver, index} = useDashboard()
   const [ value, setValue ] = useState('')
 
@@ -28,18 +28,12 @@ export function DashboardState({container}: { container: DashboardContainer<Stat
 
       if (!eventBucket) return 0
 
-      const {timestampsMs, payloads} =
-      eventBucket.getEventsInExclusiveInclusiveRange(Number.NEGATIVE_INFINITY, timestampMs) ??
-      {timestampsMs: new Float64Array(0), payloads: []}
+      const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
 
-      if (payloads && payloads.length > 0) {
-        const lastPayload = payloads[payloads.length - 1] as any | undefined
-        if (lastPayload && valueRef.current.parameterKey) {
-          setValue(getNestedValue(lastPayload, valueRef.current.parameterKey))
-        } else {
-          setValue('-')
-        }
-      }
+      if (lastEvent?.data && valueRef.current.parameterKey) {
+        setValue(getNestedValue(lastEvent.data as any, valueRef.current.parameterKey))
+      } else
+        setValue('-')
     }
   })
 

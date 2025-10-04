@@ -10,7 +10,7 @@ import loader from '@lottie/Loadder.json'
 import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigurationPopover'
 import { getNestedValue } from '@/lib/utils'
 
-export function DashboardEvent({container}: { container: DashboardContainer<EventModel> }) {
+export function EventView({container}: { container: DashboardContainer<EventModel> }) {
   const {registerObserver, index} = useDashboard()
   const [ eventDidCalled, setEventDidCalled ] = React.useState(false)
 
