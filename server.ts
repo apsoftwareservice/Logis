@@ -1,25 +1,19 @@
 // server.ts
 import { createServer } from "http";
+import { createHash, randomUUID, randomBytes } from "crypto";
 
-async function hashToken(raw: string): Promise<string> {
-    const data = new TextEncoder().encode(raw)
-    const digest = await crypto.subtle.digest("SHA-256", data)
-    const bytes = new Uint8Array(digest)
-    let hex = ""
-    for (let i = 0; i < bytes.length; i++) {
-        const h = bytes[i].toString(16).padStart(2, "0")
-        hex += h
-    }
-    return hex
+function hashToken(raw: string): string {
+    // Node-native SHA-256 → hex
+    return createHash("sha256").update(raw, "utf8").digest("hex");
 }
 
-function generateToken() {
-    // Prefer native UUID when available (Edge runtime provides global Web Crypto)
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-        return crypto.randomUUID().replace(/-/g, "").slice(0, 20)
+function generateToken(): string {
+    // Prefer Node's native UUID; fallback to random bytes
+    try {
+        return randomUUID().replace(/-/g, "").slice(0, 20);
+    } catch {
+        return randomBytes(16).toString("hex").slice(0, 20);
     }
-    // Fallback: random base36 string
-    return (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20)
 }
 
 interface EventSourceState {
@@ -30,7 +24,7 @@ interface EventSourceState {
 
 // Global state (shared across imports)
 declare global {
-     
+    // eslint-disable-next-line no-var
     var __esState: EventSourceState | undefined;
 }
 
@@ -47,12 +41,12 @@ const state = global.__esState!;
 // Create HTTP server (so we can also handle register & POST endpoints)
 const server = createServer(async (req, res) => {
     // Add CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control");
 
     // Handle preflight
-    if (req.method === 'OPTIONS') {
+    if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
         return;
@@ -62,11 +56,11 @@ const server = createServer(async (req, res) => {
 
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    // Register endpoint: /register?key=abc
+    // Register endpoint: /register (body: { key: string })
     if (req.method === "POST" && url.pathname === "/register") {
         let body = "";
         req.on("data", (chunk) => (body += chunk));
-        req.on("end", async () => {
+        req.on("end", () => {
             try {
                 const { key } = JSON.parse(body);
                 if (!key || typeof key !== "string") {
@@ -85,7 +79,7 @@ const server = createServer(async (req, res) => {
 
                 // New token
                 const token = generateToken();
-                const tokenHash = await hashToken(token);
+                const tokenHash = hashToken(token);
 
                 state.stringToToken.set(key, tokenHash);
                 state.stringToRawToken.set(key, token);
@@ -100,13 +94,12 @@ const server = createServer(async (req, res) => {
         return;
     }
 
-    // Register endpoint: /stream?token=abc
+    // Stream endpoint: /stream?token=abc OR /stream?key=abc
     if (req.method === "GET" && url.pathname === "/stream") {
         const token = url.searchParams.get("token");
         const key = url.searchParams.get("key");
         let tokenHash: string | null = null;
-
-        if (token) tokenHash = await hashToken(token);
+        if (token) tokenHash = hashToken(token);
         else if (key) tokenHash = state.stringToToken.get(key) ?? null;
 
         if (!tokenHash) {
@@ -119,7 +112,7 @@ const server = createServer(async (req, res) => {
         res.writeHead(200, {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
+            Connection: "keep-alive",
         });
 
         res.write(`data: {"type": "connected", "token": "${tokenHash}"}\n\n`);
@@ -128,24 +121,25 @@ const server = createServer(async (req, res) => {
         state.tokenToStream.set(tokenHash, res);
 
         req.on("close", () => {
-           state.tokenToStream.delete(tokenHash);
-           res.end();
+            state.tokenToStream.delete(tokenHash!);
+            res.end();
         });
 
         return;
     }
 
-    // Log send endpoint: /send?token=xxx
+    // Log send endpoint: /log?token=xxx OR /log?key=xxx
     if (req.method === "POST" && url.pathname === "/log") {
         let body = "";
         req.on("data", (chunk) => (body += chunk));
-        req.on("end", async () => {
+        req.on("end", () => {
             const token = url.searchParams.get("token");
             const key = url.searchParams.get("key");
-            let delivered = false
+
+            let delivered = false;
 
             let tokenHash: string | null = null;
-            if (token) tokenHash = await hashToken(token);
+            if (token) tokenHash = hashToken(token);
             else if (key) tokenHash = state.stringToToken.get(key) ?? null;
 
             if (!tokenHash) {
@@ -155,12 +149,15 @@ const server = createServer(async (req, res) => {
             }
 
             const stream = state.tokenToStream.get(tokenHash);
-            const payload = JSON.stringify({ type: "log", data: body ? JSON.parse(body) : {} });
+            const payload = JSON.stringify({
+                type: "log",
+                data: body ? JSON.parse(body) : {},
+            });
             console.log(payload);
 
             if (stream) {
                 try {
-                    stream.write(`data: ${payload}\n\n`)
+                    stream.write(`data: ${payload}\n\n`);
                     delivered = true;
                 } catch {
                     state.tokenToStream.delete(tokenHash);
@@ -168,7 +165,13 @@ const server = createServer(async (req, res) => {
             }
 
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ ok: true, delivered, reason: delivered ? null : "no_active_socket" }));
+            res.end(
+                JSON.stringify({
+                    ok: true,
+                    delivered,
+                    reason: delivered ? null : "no_active_socket",
+                })
+            );
         });
         return;
     }
