@@ -48,8 +48,8 @@ const state = global.__esState!;
 const server = createServer(async (req, res) => {
     // Add CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS, POST');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cache-Control');
 
     // Handle preflight
     if (req.method === 'OPTIONS') {

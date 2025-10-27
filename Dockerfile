@@ -17,5 +17,5 @@ RUN npm run build
 EXPOSE 3000
 EXPOSE 4000
 
-# Run both server.js and Next.js
-CMD ["concurrently", "node server.js", "npm start"]
+# Run both dist/server.js and Next.js
+CMD ["concurrently", "node dist/server.js", "npm start"]

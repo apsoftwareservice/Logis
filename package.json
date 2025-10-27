@@ -1,9 +1,10 @@
 {
   "name": "logis",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "scripts": {
-    "dev": "node server.js & next dev",
-    "build": "next build",
+    "dev": "concurrently 'node dist/server.js' 'next dev'",
+    "build:server": "esbuild server.ts --bundle --platform=node --outfile=dist/server.js",
+    "build": "npm run build:server && next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -54,6 +55,8 @@
     "@types/react-grid-layout": "^1.3.5",
     "@types/react-transition-group": "^4.4.12",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "esbuild": "^0.25.11",
     "eslint": "^9",
     "eslint-config-next": "15.5.3",
     "express": "^5.1.0",
