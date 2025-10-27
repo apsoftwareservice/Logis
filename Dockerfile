@@ -3,19 +3,22 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package*.json ./
-RUN npm install -g concurrently && npm install
+# Needed for some native binaries on Alpine
+RUN apk add --no-cache libc6-compat
 
-# Copy all source code
+# Install dependencies with clean lockfile-based install
+COPY package*.json ./
+RUN npm ci
+
+# Copy source AFTER deps so node_modules isn't overwritten
 COPY . .
 
-# Build Next.js
+# Build Next.js (and your server bundle)
 RUN npm run build
 
 # Expose both ports
 EXPOSE 3000
 EXPOSE 4000
 
-# Run both dist/server.js and Next.js
-CMD ["concurrently", "node dist/server.js", "npm start"]
+# Prefer npx so we don't need global installs
+CMD ["npx", "concurrently", "node dist/server.js", "npm start"]

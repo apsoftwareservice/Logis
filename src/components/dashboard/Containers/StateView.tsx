@@ -5,6 +5,7 @@ import { EventTypeIndex, Observer } from '@/core/engine'
 import BaseView from '@/components/dashboard/BaseView'
 import { MetricConfigurationPopover } from '@/components/ui/popover/MetricConfigurationPopover'
 import { getNestedValue } from '@/lib/utils'
+import {randomUUID} from "@/lib/crypto-util";
 
 export function StateView({container}: { container: DashboardContainer<StateModel> }) {
   const {registerObserver, index} = useDashboard()
@@ -21,7 +22,7 @@ export function StateView({container}: { container: DashboardContainer<StateMode
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       const eventBucket = index.getBucket(event)

@@ -1,4 +1,4 @@
-import { hashToken, generateToken } from "@/lib/crypto";
+import { hashToken, generateToken } from "@/lib/crypto-util";
 import { state } from "@/lib/sse-state";
 import { okJSON, badJSON, noContent } from "@/lib/cors";
 

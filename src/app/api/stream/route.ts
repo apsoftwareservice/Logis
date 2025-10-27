@@ -1,5 +1,5 @@
 import { state, sse } from "@/lib/sse-state";
-import { hashToken } from "@/lib/crypto";
+import { hashToken } from "@/lib/crypto-util";
 import { corsHeaders, noContent, badJSON } from "@/lib/cors";
 
 export const runtime = "edge";

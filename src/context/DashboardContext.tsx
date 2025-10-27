@@ -13,6 +13,7 @@ import { capitalize, discoverKeys, getNestedValue, toMs } from '@/lib/utils'
 import { createEventSourceInput } from '@/core/sources/eventSource'
 import * as process from 'process'
 import { Option } from '@/components/ui/multiple-selector'
+import {randomUUID} from "@/lib/crypto-util";
 
 type DashboardContextType = {
   index?: RefObject<EventTypeIndex<unknown> | null>
@@ -132,7 +133,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       } else {
         setTimeframe({start: 0, end: 0})
         try {
-          const {token, reused} = await registerLiveSession(sessionId ?? crypto.randomUUID())
+          const {token, reused} = await registerLiveSession(sessionId ?? randomUUID())
           setSessionId(token)
           await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL }/stream?token=${ token }`))
         } catch (e: any) {
@@ -254,7 +255,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         tempMarkers.push(...buckets
           .map(bucket =>
             Array.from(bucket.timestampsMs).map(timestamp => ({
-              id: crypto.randomUUID(),
+              id: randomUUID(),
               time: timestamp,
               color: option.color,
               label: value
@@ -351,7 +352,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   function addDefaultLoggerContainer() {
     setContainers(containers => containers.concat({
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       title: capitalize(ContainerType.logs),
       type: ContainerType.logs,
       gridLayout: DefaultContainerSize(ContainerType.logs),

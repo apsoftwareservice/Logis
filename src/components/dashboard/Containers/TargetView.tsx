@@ -9,6 +9,8 @@ import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfig
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import { getNestedValue } from '@/lib/utils'
+import {randomUUID} from "@/lib/crypto-util";
+
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false
@@ -80,7 +82,7 @@ export default function TargetView({container}: { container: DashboardContainer<
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       const eventBucket = index.getBucket(event)

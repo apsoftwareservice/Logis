@@ -16,3 +16,7 @@ export function generateToken(): string {
   // Shouldn’t really happen on Next.js, but keep a fallback:
   return (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 20);
 }
+
+export function randomUUID() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+}
