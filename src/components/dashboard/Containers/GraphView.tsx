@@ -10,6 +10,7 @@ import { DashboardContainer, StatisticsModel } from '@/types/containers'
 import { getNestedValue, parseNumeric } from '@/lib/utils'
 import BaseView from '@/components/dashboard/BaseView'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
+import { randomUUID } from "@/lib/crypto-util"
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -259,7 +260,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
   }
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       // Use the current configured series and keep only those for this event

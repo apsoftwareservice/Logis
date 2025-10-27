@@ -8,7 +8,7 @@ import LottieAnimation from '@/components/ui/lottie/LottieAnimation'
 import success from '@lottie/success.json'
 import loader from '@lottie/Loadder.json'
 import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigurationPopover'
-import { getNestedValue } from '@/lib/utils'
+import { randomUUID } from "@/lib/crypto-util"
 
 export function EventView({container}: { container: DashboardContainer<EventModel> }) {
   const {registerObserver, index} = useDashboard()
@@ -25,7 +25,7 @@ export function EventView({container}: { container: DashboardContainer<EventMode
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       const eventBucket = index.getBucket(event)

@@ -8,13 +8,14 @@ import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigur
 import BaseView from '@/components/dashboard/BaseView'
 import { ColumnDef } from '@tanstack/react-table'
 import GenericTable from '@/components/tables/GenericTable'
+import { randomUUID } from "@/lib/crypto-util"
 
 export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
   const {registerObserver, index} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       const eventBucket = index.getBucket(event)

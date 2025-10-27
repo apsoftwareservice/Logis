@@ -5,6 +5,7 @@ import DropdownPopover from '@/components/header/DropdownPopover'
 import { ContainerType, DefaultContainerSize } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
 import { capitalize } from '@/lib/utils'
+import { randomUUID } from "@/lib/crypto-util"
 
 export default function AddContainer() {
   const {setContainers, index} = useDashboard()
@@ -24,7 +25,7 @@ export default function AddContainer() {
       <DropdownPopover title={ 'Add Container' } isOpen={ isOpen } setIsOpen={ setIsOpen } options={ options }
                        className={ 'w-52' } onOptionClick={ (value) => {
         setContainers(containers => containers.concat({
-          id: crypto.randomUUID(),
+          id: randomUUID(),
           title: capitalize(value),
           type: value as ContainerType,
           gridLayout: DefaultContainerSize(value as ContainerType),
