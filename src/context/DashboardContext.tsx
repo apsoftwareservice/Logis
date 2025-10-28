@@ -50,7 +50,7 @@ type DashboardContextType = {
 
   sessionId?: string
   isLiveSession: boolean
-  handleLiveSessionStateChange: (state: boolean) => void
+  handleLiveSessionStateChange: (state: boolean, customId?: string) => void
 
   searchValues: Option[]
   setSearchValues: React.Dispatch<React.SetStateAction<Option[]>>
@@ -119,7 +119,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     return res.json()
   }
 
-  async function handleLiveSessionStateChange(state: boolean) {
+  async function handleLiveSessionStateChange(state: boolean, customId?: string) {
     if (engine.current && engine.current?.source.type !== InputType.stream) {
       toast.error('Refresh the page and start with Live Session')
       return
@@ -133,7 +133,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       } else {
         setTimeframe({start: 0, end: 0})
         try {
-          const {token, reused} = await registerLiveSession(sessionId ?? randomUUID())
+          if(customId) {
+            setSessionId(customId)
+          }
+          const {token, reused} = await registerLiveSession(customId ?? sessionId ?? randomUUID())
           setSessionId(token)
           await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL }/stream?token=${ token }`))
         } catch (e: any) {
