@@ -92,6 +92,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const pendingTsRef = useRef<number | null>(null)
   const scheduledRef = useRef(false)
 
+  const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000` : '';
+
   const requestSeek = useCallback((timestamp: number) => {
     pendingTsRef.current = timestamp
     if (scheduledRef.current) return
@@ -107,7 +109,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   // Helper to register live session and get token
   async function registerLiveSession(key: string): Promise<{ token: string; reused: boolean }> {
-    const res = await fetch(`${ process.env.NEXT_PUBLIC_BASE_URL }/register`, {
+    const res = await fetch(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/register`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({key})
@@ -135,7 +137,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         try {
           const {token, reused} = await registerLiveSession(customId ?? sessionId ?? randomUUID())
           setSessionId(customId ?? token)
-          await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL }/stream?token=${ token }`))
+          await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/stream?token=${ token }`))
         } catch (e: any) {
           toast.error(`${ e }`)
           setIsLiveSession(false)
