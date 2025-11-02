@@ -105,7 +105,7 @@ export function TargetConfigurationPopover({index, container, onChange}: TargetC
             variant="default"
             onClick={ () => {
               setContainers(containers => containers.map(_container => {
-                if (_container.event === container.event) {
+                if (_container.id === container.id) {
                   return {
                     ..._container,
                     event,
