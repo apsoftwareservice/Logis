@@ -8,7 +8,7 @@ import { capitalize } from '@/lib/utils'
 import { randomUUID } from "@/lib/crypto-util"
 
 export default function AddContainer() {
-  const {setContainers, index} = useDashboard()
+  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
 
   const options = Object.keys(ContainerType)
