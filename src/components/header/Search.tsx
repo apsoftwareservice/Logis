@@ -20,21 +20,6 @@ export default function Search({options = []}: {
   const inputRef = useRef<HTMLInputElement>(null)
   const [ isOpen, setIsOpen ] = useState(false)
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault()
-        inputRef.current?.focus()
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown)
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [])
-
   return (
     <form>
       <div className="relative px-5">

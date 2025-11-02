@@ -213,6 +213,21 @@ const MultipleSelector = React.forwardRef<MultipleSelectorRef, MultipleSelectorP
     const [ inputValue, setInputValue ] = React.useState('')
     const debouncedSearchTerm = useDebounce(inputValue, delay || 500)
 
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+          event.preventDefault()
+          inputRef.current?.focus()
+        }
+      }
+
+      document.addEventListener("keydown", handleKeyDown)
+
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown)
+      }
+    }, [])
+
     React.useImperativeHandle(
       ref,
       () => ({
