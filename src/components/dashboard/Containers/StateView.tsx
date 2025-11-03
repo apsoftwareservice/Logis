@@ -41,7 +41,7 @@ export function StateView({container}: { container: DashboardContainer<StateMode
   return (
     <BaseView body={
       <div className="flex w-full h-full justify-center items-center">
-        <h4 className="font-bold text-gray-800 text-title-sm dark:text-white/90">
+        <h4 className="font-bold text-gray-800 text-sm dark:text-white/90">
           { value }
         </h4>
       </div>
