@@ -8,7 +8,7 @@ import GenericTable from '@/components/tables/GenericTable'
 
 
 export default function LoggerView({container}: { container: DashboardContainer<LogsModel> }) {
-  const {logs} = useDashboard()
+  const {logs, followLogs} = useDashboard()
 
   const inferredColumns: ColumnDef<object, any>[] = useMemo(() => {
     const keys = Object.keys(logs[0]) as (keyof LogsModel)[]
@@ -20,5 +20,5 @@ export default function LoggerView({container}: { container: DashboardContainer<
 
   }, [ logs ])
 
-  return <GenericTable data={ logs } columns={ inferredColumns } container={ container } />
+  return <GenericTable data={ logs } columns={ inferredColumns } container={ container } followLogs={followLogs} />
 }

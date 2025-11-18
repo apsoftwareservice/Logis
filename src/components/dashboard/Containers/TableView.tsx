@@ -11,7 +11,7 @@ import GenericTable from '@/components/tables/GenericTable'
 import { randomUUID } from "@/lib/crypto-util"
 
 export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
-  const {registerObserver, index} = useDashboard()
+  const {registerObserver, index, followLogs} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -49,7 +49,7 @@ export default function TableView({container}: { container: DashboardContainer<T
 
   return (
     <BaseView
-      body={ <GenericTable data={ item } columns={ inferredColumns } container={ container }/> }
+      body={ <GenericTable data={ item } columns={ inferredColumns } container={ container } followLogs={followLogs}/> }
       configuration={
         <>
           { index?.current && (

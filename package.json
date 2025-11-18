@@ -1,6 +1,6 @@
 {
   "name": "logis",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "scripts": {
     "dev": "concurrently 'node dist/server.js' 'next dev'",
     "build:server": "esbuild server.ts --bundle --platform=node --outfile=dist/server.js",

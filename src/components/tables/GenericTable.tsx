@@ -79,7 +79,7 @@ const SortableHeader = ({ header, table }: any) => {
       <div
           ref={setNodeRef}
           style={{ ...style, ...getCellStyle(header.column.getSize()) }}
-          className="text-black dark:text-white select-none p-3 relative group"
+          className="text-black dark:text-white select-none p-3 relative group bg-white dark:bg-gray-900"
       >
         <div className="flex items-center justify-between gap-2">
           {header.isPlaceholder ? null : (
@@ -96,7 +96,7 @@ const SortableHeader = ({ header, table }: any) => {
           {/* Drag handle */}
           <span
               aria-label="Drag column"
-              className="cursor-grab select-none px-1"
+              className="cursor-grab select-none px-1 bg-white dark:bg-gray-900"
               {...attributes}
               {...listeners}
           >
@@ -190,10 +190,12 @@ export default function GenericTable<TData extends Record<string, any>>({
                                                                           data,
                                                                           columns: columnsProp,
                                                                           container,
+                                                                          followLogs
                                                                         }: {
   data: TData[]
   columns: ColumnDef<TData, any>[]
   container: DashboardContainer<any>
+  followLogs: boolean
 }) {
   const { removeContainer } = useDashboard()
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false)
@@ -276,8 +278,7 @@ export default function GenericTable<TData extends Record<string, any>>({
     onColumnSizingChange: setColumnSizing,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    columnResizeMode: "onChange",
+    getFilteredRowModel: getFilteredRowModel()
   })
 
   const rowVirtualizer = useVirtualizer({
@@ -287,14 +288,7 @@ export default function GenericTable<TData extends Record<string, any>>({
     overscan: 15,
     // Keep stable key so DOM nodes match indices
     getItemKey: (index) => table.getRowModel().rows[index]?.id ?? index,
-    // Use DOM height to measure
-    measureElement: (el) => (el as HTMLElement).getBoundingClientRect().height,
   })
-
-  // Re-measure when column sizes, data, or JSON beautification changes
-  useEffect(() => {
-    requestAnimationFrame(() => rowVirtualizer.measure())
-  }, [data, beautifyJSON, table.getState().columnSizing])
 
   const getCellStyle = (width: number) => ({
     width,
@@ -321,6 +315,11 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:beautify`, beautifyJSON) }, [tableKey, beautifyJSON])
   useEffect(() => { storage.set(`${tableKey}:order`, columnOrder) }, [tableKey, columnOrder])
   useEffect(() => { storage.set(`${tableKey}:sizes`, columnSizing) }, [tableKey, columnSizing])
+
+  useEffect(() => {
+    if (!followLogs) return
+    rowVirtualizer.scrollToIndex(data.length, { align: "start" })
+  }, [data, followLogs, rowVirtualizer]);
 
   return (
       <div className="h-full flex min-h-0">
