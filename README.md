@@ -81,6 +81,17 @@ Each log must contain:
 - A valid **date value** (the key name does not matter).
 - A **message** key representing the event name.
 
+```
+curl -X POST "https://logis-omega.vercel.app/log?token=1234567" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "timestamp": "2025-01-01T12:34:56.000Z",
+    "message": "UserLoggedIn",
+    "userId": "42"
+  }'
+```
+or http://localhost:4000 if running locally.
+
 You can **drag and drop** log files into the dashboard, and Logis will automatically add them and resort the timeline.
 
 ### Live Session Mode (🐳 Docker)
