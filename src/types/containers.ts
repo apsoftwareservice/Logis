@@ -5,6 +5,7 @@ export enum ContainerType {
   target = 'target',
   state = 'state',
   logs = 'logs',
+  statefulEvent = 'statefulEvent',
 }
 
 export function DefaultContainerSize(type: ContainerType) {
@@ -15,6 +16,7 @@ export function DefaultContainerSize(type: ContainerType) {
     case ContainerType.target: return {x: 0, y: 0, w: 5, h: 4}
     case ContainerType.logs: return {x: 0, y: 0, w: 19, h: 8}
     case ContainerType.event: return {x: 0, y: 0, w: 2, h: 3}
+    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 2, h: 3}
   }
 }
 
@@ -62,6 +64,11 @@ export interface TargetModel {
 
 export interface EventModel {
   event: string
+}
+
+export interface StatefulEventModel {
+  startEvent: string
+  stopEvent: string
 }
 
 export interface StateModel {
