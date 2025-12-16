@@ -356,6 +356,6 @@ export default function GraphView({container}: { container: DashboardContainer<S
         </DropdownItem>
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }

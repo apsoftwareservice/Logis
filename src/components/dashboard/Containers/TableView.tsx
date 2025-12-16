@@ -61,7 +61,6 @@ export default function TableView({container}: { container: DashboardContainer<T
         </>
       }
       container={ container }
-      eventObserver={ eventObserver }
     />
   )
 }

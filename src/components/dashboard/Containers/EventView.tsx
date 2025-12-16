@@ -71,7 +71,6 @@ export function EventView({container}: { container: DashboardContainer<EventMode
           />
         ) }
       </>
-    } container={ container }
-      eventObserver={ eventObserver }/>
+    } container={ container }/>
   )
 }

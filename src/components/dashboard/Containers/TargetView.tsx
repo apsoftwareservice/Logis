@@ -132,6 +132,6 @@ export default function TargetView({container}: { container: DashboardContainer<
         ) }
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }

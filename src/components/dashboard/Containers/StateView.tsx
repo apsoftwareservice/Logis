@@ -58,6 +58,6 @@ export function StateView({container}: { container: DashboardContainer<StateMode
         ) }
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }
