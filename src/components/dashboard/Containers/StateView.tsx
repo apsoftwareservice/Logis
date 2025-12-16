@@ -11,14 +11,7 @@ export function StateView({container}: { container: DashboardContainer<StateMode
   const {registerObserver, index} = useDashboard()
   const [ value, setValue ] = useState('')
 
-  const valueRef = useRef({
-    parameterKey: container.data.parameterKey
-  })
-
   useEffect(() => {
-    valueRef.current = {
-      parameterKey: container.data.parameterKey
-    }
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -31,8 +24,8 @@ export function StateView({container}: { container: DashboardContainer<StateMode
 
       const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
 
-      if (lastEvent?.data && valueRef.current.parameterKey) {
-        setValue(getNestedValue(lastEvent.data as any, valueRef.current.parameterKey))
+      if (lastEvent?.data && container.data.parameterKey) {
+        setValue(getNestedValue(lastEvent.data as any, container.data.parameterKey))
       } else
         setValue('-')
     }

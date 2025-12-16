@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react"
+import React, {useEffect} from "react"
 import { DashboardContainer, EventModel } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
@@ -14,15 +14,6 @@ export function EventView({container}: { container: DashboardContainer<EventMode
   const {registerObserver, index} = useDashboard()
   const [ eventDidCalled, setEventDidCalled ] = React.useState(false)
 
-  const valueRef = useRef({
-    lastState: container.data.lastState,
-  })
-
-  useEffect(() => {
-    valueRef.current = {
-      lastState: container.data.lastState,
-    }
-  }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: randomUUID(),
@@ -33,7 +24,7 @@ export function EventView({container}: { container: DashboardContainer<EventMode
       if (!eventBucket) return 0
 
       const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
-      const shouldBeCalled = !!lastEvent && valueRef.current.lastState !== undefined
+      const shouldBeCalled = !!lastEvent
 
       setEventDidCalled(prev => {
         if (prev !== shouldBeCalled) {

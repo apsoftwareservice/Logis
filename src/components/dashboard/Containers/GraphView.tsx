@@ -90,24 +90,12 @@ export default function GraphView({container}: { container: DashboardContainer<S
 
   const eventSeriesRef = useRef<Record<string, StatisticsData[]>>({})
 
-  /**
-   * Holds the latest axis names across renders so callbacks (like `renderAt`) don’t capture stale values.
-   */
-  const axesRef = useRef({
-    series: container.data.series
-  })
-
-  useEffect(() => {
-    axesRef.current = {
-      series: container.data.series
-    }
-  }, [ container ])
-
   useEffect(() => {
     if (!index?.current) return
     const seriesArr = (container.data.series ?? []) as Array<{ event: string }>
     const uniqueEvents = Array.from(new Set(seriesArr.map(s => s.event))).filter(Boolean) as string[]
     uniqueEvents.forEach(ev => registerObserver(eventObserver(ev, index.current!)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container, index, registerObserver ])
 
   const areaOptions: ApexOptions = {
@@ -264,7 +252,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     types: [ event ],
     renderAt: (timestampMs: number) => {
       // Use the current configured series and keep only those for this event
-      const configured = (axesRef.current.series ?? []) as Array<{
+      const configured = (container.data.series ?? []) as Array<{
         event: string;
         xAxisParameterName: string;
         yAxisParameterName: string;

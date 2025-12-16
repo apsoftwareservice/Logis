@@ -69,16 +69,7 @@ export default function TargetView({container}: { container: DashboardContainer<
     labels: [ 'Progress' ]
   }
 
-  const valueRef = useRef({
-    value: container.data.value,
-    maxValue: container.data.maxValue
-  })
-
   useEffect(() => {
-    valueRef.current = {
-      value: container.data.value,
-      maxValue: container.data.maxValue
-    }
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -92,10 +83,10 @@ export default function TargetView({container}: { container: DashboardContainer<
       const {timestampMs: _, data} = eventBucket.getLastEventAtOrBefore(timestampMs) ??
       {timestampMs: new Float64Array(0), data: []}
 
-      if (data && valueRef.current.value) {
-        const value = getNestedValue(data as any, valueRef.current.value)
+      if (data && container.data.value) {
+        const value = getNestedValue(data as any, container.data.value)
         if (value) {
-          setSeries([ (value / valueRef.current.maxValue) * 100 ])
+          setSeries([ (value / container.data.maxValue) * 100 ])
         } else {
           setSeries([0])
         }
