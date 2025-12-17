@@ -21,7 +21,7 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
   const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
 
-  const [ event, setEvent ] = useState<string>(container.event)
+  const [ event, setEvent ] = useState<string>(container.data.event)
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -65,7 +65,7 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
                 if (_container.id === container.id) {
                   return {
                     ..._container,
-                    event
+                    data: { event: event}
                   }
                 }
                 return _container

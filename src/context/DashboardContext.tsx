@@ -358,7 +358,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       title: capitalize(ContainerType.logs),
       type: ContainerType.logs,
       gridLayout: DefaultContainerSize(ContainerType.logs),
-      event: '',
       data: {}
     }))
   }

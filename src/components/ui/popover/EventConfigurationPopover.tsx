@@ -19,7 +19,7 @@ export interface EventConfigurationPopoverProps {
 export function EventConfigurationPopover({index, container, onChange}: EventConfigurationPopoverProps) {
   const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.event)
+  const [ event, setEvent ] = useState<string>(container.data.event)
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -64,10 +64,9 @@ export function EventConfigurationPopover({index, container, onChange}: EventCon
                 if (_container.id === container.id) {
                   return {
                     ..._container,
-                    event,
                     data: {
                       ..._container.data,
-                      lastState: false
+                      event: event,
                     }
                   }
                 }

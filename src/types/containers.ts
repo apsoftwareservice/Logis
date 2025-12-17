@@ -22,7 +22,6 @@ export type DashboardContainer<T extends object> = {
   id: string
   title: string
   type: ContainerType
-  event: string
   gridLayout: {x: number, y: number, w: number, h: number}
   data: T
 }
@@ -33,7 +32,6 @@ export function isPresetJSON(value: any): value is DashboardContainer<object>[] 
     typeof item.id === 'string' &&
     typeof item.title === 'string' &&
     typeof item.type === 'string' &&
-    typeof item.event === 'string' &&
     typeof item.gridLayout === 'object' &&
     typeof item.gridLayout.x === 'number' &&
     typeof item.gridLayout.y === 'number' &&
@@ -53,19 +51,21 @@ export interface StatisticsModel {
 }
 
 export interface TableModel {
-  columns: string[]
+  event: string
 }
 
 export interface TargetModel {
+  event: string
   value: string
   maxValue: number
 }
 
 export interface EventModel {
-  lastState: boolean
+  event: string
 }
 
 export interface StateModel {
+  event: string
   parameterKey: string
 }
 

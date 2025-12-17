@@ -20,7 +20,7 @@ export function TargetConfigurationPopover({index, container, onChange}: TargetC
   const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
   const [ options, setOptions ] = useState<NestedObject>()
-  const [ event, setEvent ] = useState<string>(container.event)
+  const [ event, setEvent ] = useState<string>(container.data.event)
   const [ value, setValue ] = useState<string>(container.data.value)
   const [ maxValue, setMaxValue ] = useState<number>(container.data.maxValue)
 
@@ -108,10 +108,10 @@ export function TargetConfigurationPopover({index, container, onChange}: TargetC
                 if (_container.id === container.id) {
                   return {
                     ..._container,
-                    event,
                     data: {
                       ..._container.data,
                       value,
+                      event: event,
                       maxValue
                     }
                   }

@@ -18,7 +18,7 @@ export interface MetricConfigurationPopoverProps {
 export function MetricConfigurationPopover({index, container, onChange}: MetricConfigurationPopoverProps) {
   const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.event)
+  const [ event, setEvent ] = useState<string>(container.data.event)
   const [ value, setValue ] = useState<string>(container.data.parameterKey)
   const [ options, setOptions ] = useState<NestedObject>()
 
@@ -90,11 +90,10 @@ export function MetricConfigurationPopover({index, container, onChange}: MetricC
                 if (_container.id === container.id) {
                   return {
                     ..._container,
-                    event,
                     data: {
                       ..._container.data,
                       parameterKey: value,
-                      lastState: false
+                      event: event,
                     }
                   }
                 }

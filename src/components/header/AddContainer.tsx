@@ -29,7 +29,6 @@ export default function AddContainer() {
           title: capitalize(value),
           type: value as ContainerType,
           gridLayout: DefaultContainerSize(value as ContainerType),
-          event: '',
           data: {}
         }))
       } }/>

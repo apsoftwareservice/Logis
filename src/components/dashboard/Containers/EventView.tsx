@@ -45,7 +45,7 @@ export function EventView({container}: { container: DashboardContainer<EventMode
             animate={ {opacity: 1, y: 0} }
             transition={ {duration: 0.6, ease: 'easeOut'} }
           >
-            <LottieAnimation loop={ !eventDidCalled && container.event !== '' } animationJson={ eventDidCalled ? success : loader }
+            <LottieAnimation loop={ !eventDidCalled && !!container.data.event } animationJson={ eventDidCalled ? success : loader }
                              className={ 'items-center justify-center align-middle flex' } height={ '60%' }
                              width={ '60%' }/>
           </motion.div>
