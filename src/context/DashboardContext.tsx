@@ -44,6 +44,7 @@ type DashboardContextType = {
   updateContainerTitle: (container: DashboardContainer<object>, title: string) => void
   updateContainerSize: (layout: Layout) => void
   removeContainer: (container: DashboardContainer<object>) => void
+  setContainer: (container: DashboardContainer<object>) => void
 
   followLogs: boolean
   setFollowLogs: React.Dispatch<React.SetStateAction<boolean>>
@@ -396,6 +397,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     setContainers(containers => containers.filter(_container => _container.id !== container.id))
   }
 
+  function setContainer(container: DashboardContainer<any>) {
+    setContainers(containers => containers.map(_container => {
+      if (_container.id === container.id) {
+        return container
+      }
+      return _container
+    }))
+  }
+
   return (
     <DashboardContext.Provider
       value={ {
@@ -416,6 +426,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         updateContainerTitle,
         updateContainerSize,
         removeContainer,
+        setContainer,
         logs,
         cachedDateKey,
         followLogs,

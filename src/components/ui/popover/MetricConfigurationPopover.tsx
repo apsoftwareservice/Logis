@@ -4,7 +4,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { DashboardContainer, StateModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
 import { Label } from '@/components/ui/label'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 import { toast } from 'react-toastify'
@@ -12,11 +11,10 @@ import { toast } from 'react-toastify'
 export interface MetricConfigurationPopoverProps {
   index: EventTypeIndex
   container: DashboardContainer<StateModel>
-  onChange: (event: string) => void
+  onChange: (event: string, parameterKey: string) => void
 }
 
 export function MetricConfigurationPopover({index, container, onChange}: MetricConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
   const [ event, setEvent ] = useState<string>(container.data.event)
   const [ value, setValue ] = useState<string>(container.data.parameterKey)
@@ -86,21 +84,7 @@ export function MetricConfigurationPopover({index, container, onChange}: MetricC
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    data: {
-                      ..._container.data,
-                      parameterKey: value,
-                      event: event,
-                    }
-                  }
-                }
-                return _container
-              }))
-
-              onChange(event)
+              onChange(event, value)
               setIsOpen(false)
             } }
           >

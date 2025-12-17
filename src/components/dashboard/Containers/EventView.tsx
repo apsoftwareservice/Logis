@@ -11,16 +11,20 @@ import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigur
 import { randomUUID } from "@/lib/crypto-util"
 
 export function EventView({container}: { container: DashboardContainer<EventModel> }) {
-  const {registerObserver, index} = useDashboard()
+  const {registerObserver, index, setContainer} = useDashboard()
   const [ eventDidCalled, setEventDidCalled ] = React.useState(false)
 
+  useEffect( () => {
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ container ]);
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
       const eventBucket = index.getBucket(event)
-
       if (!eventBucket) return 0
 
       const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
@@ -56,8 +60,11 @@ export function EventView({container}: { container: DashboardContainer<EventMode
           <EventConfigurationPopover
             index={ index.current }
             container={ container }
-            onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            onChange={ (event: string) => {
+              setContainer({
+                ...container,
+                data: { event: event }
+              })
             } }
           />
         ) }

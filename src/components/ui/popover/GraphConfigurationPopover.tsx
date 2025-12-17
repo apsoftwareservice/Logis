@@ -5,7 +5,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { DashboardContainer, Series, StatisticsModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 
 export interface GraphConfigurationPopoverProps {
@@ -15,7 +14,6 @@ export interface GraphConfigurationPopoverProps {
 }
 
 export function GraphConfigurationPopover({index, container, onChange}: GraphConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
 
   const [ seriesList, setSeriesList ] = useState<Series[]>(container.data.series)
@@ -144,19 +142,6 @@ export function GraphConfigurationPopover({index, container, onChange}: GraphCon
               className={ 'border' }
               onClick={ () => {
                 if (!seriesList.length) return
-
-                setContainers(containers => containers.map(_container => {
-                  if (_container.id === container.id) {
-                    return {
-                      ..._container,
-                      data: {
-                        ..._container.data,
-                        series: seriesList
-                      }
-                    }
-                  }
-                  return _container
-                }))
 
                 onChange(seriesList)
 

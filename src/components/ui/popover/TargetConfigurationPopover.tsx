@@ -13,11 +13,10 @@ import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 export interface TargetConfigurationPopoverProps {
   index: EventTypeIndex
   container: DashboardContainer<TargetModel>
-  onChange: (event: string) => void
+  onChange: (event: string, value: string, maxValue: number) => void
 }
 
 export function TargetConfigurationPopover({index, container, onChange}: TargetConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
   const [ options, setOptions ] = useState<NestedObject>()
   const [ event, setEvent ] = useState<string>(container.data.event)
@@ -78,7 +77,7 @@ export function TargetConfigurationPopover({index, container, onChange}: TargetC
               <div className="grid gap-2">
                 <Label>Value</Label>
                 { options && (
-                  <NestedSelect data={ options } onSelect={ (value) => {
+                  <NestedSelect data={ options } value={value} onSelect={ (value) => {
                     setValue(value)
                   } }/>
                 )}
@@ -104,22 +103,7 @@ export function TargetConfigurationPopover({index, container, onChange}: TargetC
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    data: {
-                      ..._container.data,
-                      value,
-                      event: event,
-                      maxValue
-                    }
-                  }
-                }
-                return _container
-              }))
-
-              onChange(event)
+              onChange(event, value, maxValue)
               setIsOpen(false)
             } }
           >

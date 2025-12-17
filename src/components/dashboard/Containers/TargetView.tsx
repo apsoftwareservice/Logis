@@ -17,7 +17,7 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 })
 
 export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
-  const {index, registerObserver} = useDashboard()
+  const {index, registerObserver, setContainer} = useDashboard()
   const [ series, setSeries ] = useState([ 0 ])
   const options: ApexOptions = {
     colors: [ "#465FFF" ],
@@ -70,6 +70,9 @@ export default function TargetView({container}: { container: DashboardContainer<
   }
 
   useEffect(() => {
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -116,8 +119,8 @@ export default function TargetView({container}: { container: DashboardContainer<
           <TargetConfigurationPopover
             index={ index.current }
             container={ container }
-            onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            onChange={ (event, value, maxValue) => {
+              setContainer({...container, data: {event: event, value: value, maxValue: maxValue}})
             } }
           />
         ) }

@@ -1,15 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { Settings } from 'lucide-react'
-import { DashboardContainer, TableModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
-import { toast } from 'react-toastify'
-import NestedSelect, { NestedObject } from '../nestedSelect'
-import Badge from '@/components/ui/badge/Badge'
+import {DashboardContainer, TableModel} from "@/types/containers";
 
 export interface TableConfigurationPopoverProps {
   index: EventTypeIndex
@@ -18,7 +12,6 @@ export interface TableConfigurationPopoverProps {
 }
 
 export function TableConfigurationPopover({index, container, onChange}: TableConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
 
   const [ event, setEvent ] = useState<string>(container.data.event)
@@ -61,16 +54,6 @@ export function TableConfigurationPopover({index, container, onChange}: TableCon
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    data: { event: event}
-                  }
-                }
-                return _container
-              }))
-
               onChange(event)
               setIsOpen(false)
             } }

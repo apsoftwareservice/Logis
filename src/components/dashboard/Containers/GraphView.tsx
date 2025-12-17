@@ -79,7 +79,7 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
  * points and the series is updated only when needed.
  */
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
-  const {index, registerObserver} = useDashboard()
+  const {index, registerObserver, setContainer} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
   const [ isBarChart, setIsBarChart ] = useState<boolean>(false)
 
@@ -96,7 +96,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     const uniqueEvents = Array.from(new Set(seriesArr.map(s => s.event))).filter(Boolean) as string[]
     uniqueEvents.forEach(ev => registerObserver(eventObserver(ev, index.current!)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ container, index, registerObserver ])
+  }, [ container ])
 
   const areaOptions: ApexOptions = {
     legend: {
@@ -332,8 +332,8 @@ export default function GraphView({container}: { container: DashboardContainer<S
           <GraphConfigurationPopover
             index={ index.current }
             container={ container }
-            onChange={ () => {
-              // Observers are registered per-event via effect when container updates
+            onChange={ (seriesList) => {
+              setContainer({ ...container, data: { series: seriesList } })
             } }/>
         ) }
         <DropdownItem

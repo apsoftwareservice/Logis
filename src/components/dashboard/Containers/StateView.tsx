@@ -8,10 +8,13 @@ import { getNestedValue } from '@/lib/utils'
 import {randomUUID} from "@/lib/crypto-util";
 
 export function StateView({container}: { container: DashboardContainer<StateModel> }) {
-  const {registerObserver, index} = useDashboard()
+  const {registerObserver, index, setContainer} = useDashboard()
   const [ value, setValue ] = useState('')
 
   useEffect(() => {
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -44,8 +47,8 @@ export function StateView({container}: { container: DashboardContainer<StateMode
           <MetricConfigurationPopover
             index={ index.current }
             container={ container }
-            onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            onChange={ (event, parameterKey) => {
+              setContainer({...container, data: {event: event, parameterKey: parameterKey}})
             } }
           />
         ) }

@@ -1,14 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, EventModel, TargetModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
-import { toast } from 'react-toastify'
-import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
+import {DashboardContainer, EventModel} from "@/types/containers";
 
 export interface EventConfigurationPopoverProps {
   index: EventTypeIndex
@@ -17,7 +12,6 @@ export interface EventConfigurationPopoverProps {
 }
 
 export function EventConfigurationPopover({index, container, onChange}: EventConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
   const [ event, setEvent ] = useState<string>(container.data.event)
 
@@ -60,19 +54,6 @@ export function EventConfigurationPopover({index, container, onChange}: EventCon
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    data: {
-                      ..._container.data,
-                      event: event,
-                    }
-                  }
-                }
-                return _container
-              }))
-
               onChange(event)
               setIsOpen(false)
             } }
