@@ -3,21 +3,21 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, StateModel } from '@/types/containers'
 import { Label } from '@/components/ui/label'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 import { toast } from 'react-toastify'
 
-export interface MetricConfigurationPopoverProps {
+export interface EventParameterConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<StateModel>
+  currentEvent: string
+  currentParameterKey: string
   onChange: (event: string, parameterKey: string) => void
 }
 
-export function MetricConfigurationPopover({index, container, onChange}: MetricConfigurationPopoverProps) {
+export function EventParameterConfigurationPopover({index, currentEvent, currentParameterKey, onChange}: EventParameterConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.data.event)
-  const [ value, setValue ] = useState<string>(container.data.parameterKey)
+  const [ event, setEvent ] = useState<string>(currentEvent)
+  const [ value, setValue ] = useState<string>(currentParameterKey)
   const [ options, setOptions ] = useState<NestedObject>()
 
   useEffect(() => {

@@ -4,19 +4,19 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, Series, StatisticsModel } from '@/types/containers'
+import { Series } from '@/types/containers'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 
 export interface GraphConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<StatisticsModel>
+  currentValue: Series[]
   onChange: (series: Series[]) => void
 }
 
-export function GraphConfigurationPopover({index, container, onChange}: GraphConfigurationPopoverProps) {
+export function GraphConfigurationPopover({index, currentValue, onChange}: GraphConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
 
-  const [ seriesList, setSeriesList ] = useState<Series[]>(container.data.series)
+  const [ seriesList, setSeriesList ] = useState<Series[]>(currentValue)
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>

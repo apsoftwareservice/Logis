@@ -59,7 +59,7 @@ export function EventView({container}: { container: DashboardContainer<EventMode
         { index?.current && (
           <EventConfigurationPopover
             index={ index.current }
-            container={ container }
+            currentValue={ container.data.event }
             onChange={ (event: string) => {
               setContainer({
                 ...container,

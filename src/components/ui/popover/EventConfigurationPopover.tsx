@@ -3,17 +3,16 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import {DashboardContainer, EventModel} from "@/types/containers";
 
 export interface EventConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<EventModel>
+  currentValue: string
   onChange: (event: string) => void
 }
 
-export function EventConfigurationPopover({index, container, onChange}: EventConfigurationPopoverProps) {
+export function EventConfigurationPopover({index, currentValue, onChange}: EventConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.data.event)
+  const [ event, setEvent ] = useState<string>(currentValue)
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>

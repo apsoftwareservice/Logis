@@ -56,7 +56,7 @@ export interface TableModel {
 
 export interface TargetModel {
   event: string
-  value: string
+  parameterKey: string
   maxValue: number
 }
 

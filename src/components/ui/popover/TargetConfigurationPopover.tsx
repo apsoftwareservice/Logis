@@ -5,23 +5,23 @@ import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, TargetModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
 import { toast } from 'react-toastify'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 
 export interface TargetConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<TargetModel>
-  onChange: (event: string, value: string, maxValue: number) => void
+  currentEvent: string
+  currentParameterKey: string
+  currentMaxValue: number
+  onChange: (event: string, parameterKey: string, maxValue: number) => void
 }
 
-export function TargetConfigurationPopover({index, container, onChange}: TargetConfigurationPopoverProps) {
+export function TargetConfigurationPopover({index, currentEvent, currentParameterKey, currentMaxValue, onChange}: TargetConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
   const [ options, setOptions ] = useState<NestedObject>()
-  const [ event, setEvent ] = useState<string>(container.data.event)
-  const [ value, setValue ] = useState<string>(container.data.value)
-  const [ maxValue, setMaxValue ] = useState<number>(container.data.maxValue)
+  const [ event, setEvent ] = useState<string>(currentEvent)
+  const [ value, setValue ] = useState<string>(currentParameterKey)
+  const [ maxValue, setMaxValue ] = useState<number>(currentMaxValue)
 
   useEffect(() => {
     const bucket = index.getBucket(event)

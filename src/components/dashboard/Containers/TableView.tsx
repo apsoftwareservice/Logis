@@ -4,7 +4,7 @@ import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import React, {useEffect, useMemo, useState} from 'react'
 import { DashboardContainer, LogsModel, TableModel } from '@/types/containers'
-import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigurationPopover"
+import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigurationPopover'
 import BaseView from '@/components/dashboard/BaseView'
 import { ColumnDef } from '@tanstack/react-table'
 import GenericTable from '@/components/tables/GenericTable'
@@ -59,7 +59,7 @@ export default function TableView({container}: { container: DashboardContainer<T
       configuration={
         <>
           { index?.current && (
-            <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
+            <EventConfigurationPopover index={ index.current! } currentValue={ container.data.event } onChange={ (event) => {
               setContainer({...container, data: {event: event}})
             } }/>
           )

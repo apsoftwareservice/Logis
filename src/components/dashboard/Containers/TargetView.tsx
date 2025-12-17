@@ -86,8 +86,8 @@ export default function TargetView({container}: { container: DashboardContainer<
       const {timestampMs: _, data} = eventBucket.getLastEventAtOrBefore(timestampMs) ??
       {timestampMs: new Float64Array(0), data: []}
 
-      if (data && container.data.value) {
-        const value = getNestedValue(data as any, container.data.value)
+      if (data && container.data.parameterKey) {
+        const value = getNestedValue(data as any, container.data.parameterKey)
         if (value) {
           setSeries([ (value / container.data.maxValue) * 100 ])
         } else {
@@ -118,9 +118,11 @@ export default function TargetView({container}: { container: DashboardContainer<
         { index?.current && (
           <TargetConfigurationPopover
             index={ index.current }
-            container={ container }
-            onChange={ (event, value, maxValue) => {
-              setContainer({...container, data: {event: event, value: value, maxValue: maxValue}})
+            currentEvent={ container.data.event }
+            currentParameterKey={ container.data.parameterKey }
+            currentMaxValue={ container.data.maxValue }
+            onChange={ (event, parameterKey, maxValue) => {
+              setContainer({...container, data: {event: event, parameterKey: parameterKey, maxValue: maxValue}})
             } }
           />
         ) }

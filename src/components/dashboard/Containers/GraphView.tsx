@@ -331,7 +331,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
         { index?.current && (
           <GraphConfigurationPopover
             index={ index.current }
-            container={ container }
+            currentValue={ container.data.series }
             onChange={ (seriesList) => {
               setContainer({ ...container, data: { series: seriesList } })
             } }/>
