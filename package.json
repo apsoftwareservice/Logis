@@ -33,7 +33,7 @@
     "framer-motion": "^12.23.12",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.544.0",
-    "next": "15.5.3",
+    "next": "16.0.10",
     "rc-slider": "^11.1.9",
     "react": "^19.1.1",
     "react-apexcharts": "^1.7.0",

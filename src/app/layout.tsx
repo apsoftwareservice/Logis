@@ -4,9 +4,8 @@ import './globals.css'
 import { SidebarProvider } from '@/context/SidebarContext'
 import { ThemeProvider } from '@/context/ThemeContext'
 import { DashboardProvider } from '@/context/DashboardContext'
-import { Slide, ToastContainer } from 'react-toastify'
-import '/node_modules/react-grid-layout/css/styles.css'
-import '/node_modules/react-resizable/css/styles.css'
+import 'react-grid-layout/css/styles.css'
+import 'react-resizable/css/styles.css'
 
 const outfit = Outfit({
   subsets: [ "latin" ]
