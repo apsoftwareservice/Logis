@@ -5,6 +5,7 @@ export enum ContainerType {
   target = 'target',
   state = 'state',
   logs = 'logs',
+  statefulEvent = 'statefulEvent',
 }
 
 export function DefaultContainerSize(type: ContainerType) {
@@ -15,6 +16,7 @@ export function DefaultContainerSize(type: ContainerType) {
     case ContainerType.target: return {x: 0, y: 0, w: 5, h: 4}
     case ContainerType.logs: return {x: 0, y: 0, w: 19, h: 8}
     case ContainerType.event: return {x: 0, y: 0, w: 2, h: 3}
+    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 2, h: 3}
   }
 }
 
@@ -22,7 +24,6 @@ export type DashboardContainer<T extends object> = {
   id: string
   title: string
   type: ContainerType
-  event: string
   gridLayout: {x: number, y: number, w: number, h: number}
   data: T
 }
@@ -33,7 +34,6 @@ export function isPresetJSON(value: any): value is DashboardContainer<object>[] 
     typeof item.id === 'string' &&
     typeof item.title === 'string' &&
     typeof item.type === 'string' &&
-    typeof item.event === 'string' &&
     typeof item.gridLayout === 'object' &&
     typeof item.gridLayout.x === 'number' &&
     typeof item.gridLayout.y === 'number' &&
@@ -53,19 +53,26 @@ export interface StatisticsModel {
 }
 
 export interface TableModel {
-  columns: string[]
+  event: string
 }
 
 export interface TargetModel {
-  value: string
+  event: string
+  parameterKey: string
   maxValue: number
 }
 
 export interface EventModel {
-  lastState: boolean
+  event: string
+}
+
+export interface StatefulEventModel {
+  startEvent: string
+  stopEvent: string
 }
 
 export interface StateModel {
+  event: string
   parameterKey: string
 }
 

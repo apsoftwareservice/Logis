@@ -3,22 +3,18 @@ import { DashboardContainer, StateModel } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import BaseView from '@/components/dashboard/BaseView'
-import { MetricConfigurationPopover } from '@/components/ui/popover/MetricConfigurationPopover'
+import { EventParameterConfigurationPopover } from '@/components/ui/popover/EventParameterConfigurationPopover'
 import { getNestedValue } from '@/lib/utils'
 import {randomUUID} from "@/lib/crypto-util";
 
 export function StateView({container}: { container: DashboardContainer<StateModel> }) {
-  const {registerObserver, index} = useDashboard()
+  const {registerObserver, index, setContainer} = useDashboard()
   const [ value, setValue ] = useState('')
 
-  const valueRef = useRef({
-    parameterKey: container.data.parameterKey
-  })
-
   useEffect(() => {
-    valueRef.current = {
-      parameterKey: container.data.parameterKey
-    }
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -31,8 +27,8 @@ export function StateView({container}: { container: DashboardContainer<StateMode
 
       const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
 
-      if (lastEvent?.data && valueRef.current.parameterKey) {
-        setValue(getNestedValue(lastEvent.data as any, valueRef.current.parameterKey))
+      if (lastEvent?.data && container.data.parameterKey) {
+        setValue(getNestedValue(lastEvent.data as any, container.data.parameterKey))
       } else
         setValue('-')
     }
@@ -48,16 +44,17 @@ export function StateView({container}: { container: DashboardContainer<StateMode
     } configuration={
       <>
         { index?.current && (
-          <MetricConfigurationPopover
+          <EventParameterConfigurationPopover
             index={ index.current }
-            container={ container }
-            onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            currentEvent={ container.data.event }
+            currentParameterKey={ container.data.parameterKey }
+            onChange={ (event, parameterKey) => {
+              setContainer({...container, data: {event: event, parameterKey: parameterKey}})
             } }
           />
         ) }
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }

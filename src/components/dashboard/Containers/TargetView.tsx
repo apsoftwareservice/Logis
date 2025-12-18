@@ -17,7 +17,7 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 })
 
 export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
-  const {index, registerObserver} = useDashboard()
+  const {index, registerObserver, setContainer} = useDashboard()
   const [ series, setSeries ] = useState([ 0 ])
   const options: ApexOptions = {
     colors: [ "#465FFF" ],
@@ -69,16 +69,10 @@ export default function TargetView({container}: { container: DashboardContainer<
     labels: [ 'Progress' ]
   }
 
-  const valueRef = useRef({
-    value: container.data.value,
-    maxValue: container.data.maxValue
-  })
-
   useEffect(() => {
-    valueRef.current = {
-      value: container.data.value,
-      maxValue: container.data.maxValue
-    }
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container ])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
@@ -92,10 +86,10 @@ export default function TargetView({container}: { container: DashboardContainer<
       const {timestampMs: _, data} = eventBucket.getLastEventAtOrBefore(timestampMs) ??
       {timestampMs: new Float64Array(0), data: []}
 
-      if (data && valueRef.current.value) {
-        const value = getNestedValue(data as any, valueRef.current.value)
+      if (data && container.data.parameterKey) {
+        const value = getNestedValue(data as any, container.data.parameterKey)
         if (value) {
-          setSeries([ (value / valueRef.current.maxValue) * 100 ])
+          setSeries([ (value / container.data.maxValue) * 100 ])
         } else {
           setSeries([0])
         }
@@ -124,14 +118,16 @@ export default function TargetView({container}: { container: DashboardContainer<
         { index?.current && (
           <TargetConfigurationPopover
             index={ index.current }
-            container={ container }
-            onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            currentEvent={ container.data.event }
+            currentParameterKey={ container.data.parameterKey }
+            currentMaxValue={ container.data.maxValue }
+            onChange={ (event, parameterKey, maxValue) => {
+              setContainer({...container, data: {event: event, parameterKey: parameterKey, maxValue: maxValue}})
             } }
           />
         ) }
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }

@@ -14,18 +14,11 @@ export interface BaseViewProps {
   className?: string
   configuration: ReactElement
   container: DashboardContainer<any>
-  eventObserver: (event: string, index: EventTypeIndex) => Observer
 }
 
-export default function BaseView({body, className, configuration, container, eventObserver}: BaseViewProps) {
-  const {updateContainerTitle, lockGrid, removeContainer, containers, index, isRegisteredObserver, registerObserver} = useDashboard()
+export default function BaseView({body, className, configuration, container}: BaseViewProps) {
+  const {updateContainerTitle, lockGrid, removeContainer} = useDashboard()
   const [ isDropdownOpen, setIsDropdownOpen ] = useState<boolean>(false)
-
-  useEffect(() => {
-    if (containers?.length > 0 && index?.current && !isRegisteredObserver(container.id)) {
-      registerObserver(eventObserver(container.event, index.current!))
-    }
-  }, [container, containers, eventObserver, index, isRegisteredObserver, registerObserver])
 
   return (
     <div

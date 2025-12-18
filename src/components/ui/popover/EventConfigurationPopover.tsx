@@ -1,25 +1,18 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, EventModel, TargetModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
-import { toast } from 'react-toastify'
-import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 
 export interface EventConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<EventModel>
+  currentValue: string
   onChange: (event: string) => void
 }
 
-export function EventConfigurationPopover({index, container, onChange}: EventConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
+export function EventConfigurationPopover({index, currentValue, onChange}: EventConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.event)
+  const [ event, setEvent ] = useState<string>(currentValue)
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -60,20 +53,6 @@ export function EventConfigurationPopover({index, container, onChange}: EventCon
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    event,
-                    data: {
-                      ..._container.data,
-                      lastState: false
-                    }
-                  }
-                }
-                return _container
-              }))
-
               onChange(event)
               setIsOpen(false)
             } }

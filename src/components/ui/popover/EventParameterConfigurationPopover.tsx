@@ -3,23 +3,21 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
-import { DashboardContainer, StateModel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
 import { Label } from '@/components/ui/label'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 import { toast } from 'react-toastify'
 
-export interface MetricConfigurationPopoverProps {
+export interface EventParameterConfigurationPopoverProps {
   index: EventTypeIndex
-  container: DashboardContainer<StateModel>
-  onChange: (event: string) => void
+  currentEvent: string
+  currentParameterKey: string
+  onChange: (event: string, parameterKey: string) => void
 }
 
-export function MetricConfigurationPopover({index, container, onChange}: MetricConfigurationPopoverProps) {
-  const {setContainers} = useDashboard()
+export function EventParameterConfigurationPopover({index, currentEvent, currentParameterKey, onChange}: EventParameterConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
-  const [ event, setEvent ] = useState<string>(container.event)
-  const [ value, setValue ] = useState<string>(container.data.parameterKey)
+  const [ event, setEvent ] = useState<string>(currentEvent)
+  const [ value, setValue ] = useState<string>(currentParameterKey)
   const [ options, setOptions ] = useState<NestedObject>()
 
   useEffect(() => {
@@ -86,22 +84,7 @@ export function MetricConfigurationPopover({index, container, onChange}: MetricC
           <Button
             variant="default"
             onClick={ () => {
-              setContainers(containers => containers.map(_container => {
-                if (_container.id === container.id) {
-                  return {
-                    ..._container,
-                    event,
-                    data: {
-                      ..._container.data,
-                      parameterKey: value,
-                      lastState: false
-                    }
-                  }
-                }
-                return _container
-              }))
-
-              onChange(event)
+              onChange(event, value)
               setIsOpen(false)
             } }
           >

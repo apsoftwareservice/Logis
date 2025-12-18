@@ -14,6 +14,7 @@ import { MainWaitingView } from '@/components/dashboard/MainWaitingView'
 import cat from '@lottie/cat.json'
 import LoggerView from '@/components/dashboard/Containers/LoggerView'
 import { EventView } from '@/components/dashboard/Containers/EventView'
+import { StatefulEventView } from '@/components/dashboard/Containers/StatefulEventView'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -75,6 +76,13 @@ export default function Dashboard() {
                       <EventView container={ container }/>
                     </div>
                   )
+                  case ContainerType.statefulEvent:
+                      return (
+                          <div key={ container.id } data-grid={ container.gridLayout }>
+                              {/* @ts-expect-error ignore */ }
+                              <StatefulEventView container={ container }/>
+                          </div>
+                      )
                 case ContainerType.target:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>

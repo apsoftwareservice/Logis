@@ -79,7 +79,7 @@ function computeSeriesSignature(yAxisName: string, dataPoints: ChartDataPoint[])
  * points and the series is updated only when needed.
  */
 export default function GraphView({container}: { container: DashboardContainer<StatisticsModel> }) {
-  const {index, registerObserver} = useDashboard()
+  const {index, registerObserver, setContainer} = useDashboard()
   const [ series, setSeries ] = useState<StatisticsData[]>([])
   const [ isBarChart, setIsBarChart ] = useState<boolean>(false)
 
@@ -90,25 +90,13 @@ export default function GraphView({container}: { container: DashboardContainer<S
 
   const eventSeriesRef = useRef<Record<string, StatisticsData[]>>({})
 
-  /**
-   * Holds the latest axis names across renders so callbacks (like `renderAt`) don’t capture stale values.
-   */
-  const axesRef = useRef({
-    series: container.data.series
-  })
-
-  useEffect(() => {
-    axesRef.current = {
-      series: container.data.series
-    }
-  }, [ container ])
-
   useEffect(() => {
     if (!index?.current) return
     const seriesArr = (container.data.series ?? []) as Array<{ event: string }>
     const uniqueEvents = Array.from(new Set(seriesArr.map(s => s.event))).filter(Boolean) as string[]
     uniqueEvents.forEach(ev => registerObserver(eventObserver(ev, index.current!)))
-  }, [ container, index, registerObserver ])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ container ])
 
   const areaOptions: ApexOptions = {
     legend: {
@@ -264,7 +252,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     types: [ event ],
     renderAt: (timestampMs: number) => {
       // Use the current configured series and keep only those for this event
-      const configured = (axesRef.current.series ?? []) as Array<{
+      const configured = (container.data.series ?? []) as Array<{
         event: string;
         xAxisParameterName: string;
         yAxisParameterName: string;
@@ -343,9 +331,9 @@ export default function GraphView({container}: { container: DashboardContainer<S
         { index?.current && (
           <GraphConfigurationPopover
             index={ index.current }
-            container={ container }
-            onChange={ () => {
-              // Observers are registered per-event via effect when container updates
+            currentValue={ container.data.series }
+            onChange={ (seriesList) => {
+              setContainer({ ...container, data: { series: seriesList } })
             } }/>
         ) }
         <DropdownItem
@@ -356,6 +344,6 @@ export default function GraphView({container}: { container: DashboardContainer<S
         </DropdownItem>
       </>
     } container={ container }
-              eventObserver={ eventObserver }/>
+    />
   )
 }

@@ -2,17 +2,23 @@
 
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
-import React, { useMemo, useState } from 'react'
+import React, {useEffect, useMemo, useState} from 'react'
 import { DashboardContainer, LogsModel, TableModel } from '@/types/containers'
-import { TableConfigurationPopover } from "@/components/ui/popover/TableConfigurationPopover"
+import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigurationPopover'
 import BaseView from '@/components/dashboard/BaseView'
 import { ColumnDef } from '@tanstack/react-table'
 import GenericTable from '@/components/tables/GenericTable'
 import { randomUUID } from "@/lib/crypto-util"
 
 export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
-  const {registerObserver, index, followLogs} = useDashboard()
+  const {registerObserver, index, followLogs, setContainer} = useDashboard()
   const [ item, setItem ] = useState<object[]>([])
+
+  useEffect( () => {
+    if(!index?.current) return
+    registerObserver(eventObserver(container.data.event, index.current!))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container])
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: randomUUID(),
@@ -53,15 +59,14 @@ export default function TableView({container}: { container: DashboardContainer<T
       configuration={
         <>
           { index?.current && (
-            <TableConfigurationPopover index={ index.current! } container={ container } onChange={ (event) => {
-              registerObserver(eventObserver(event, index.current!))
+            <EventConfigurationPopover index={ index.current! } currentValue={ container.data.event } onChange={ (event) => {
+              setContainer({...container, data: {event: event}})
             } }/>
           )
           }
         </>
       }
       container={ container }
-      eventObserver={ eventObserver }
     />
   )
 }
