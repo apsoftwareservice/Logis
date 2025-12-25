@@ -69,6 +69,7 @@ export interface EventModel {
 export interface StatefulEventModel {
   startEvent: string
   stopEvent: string
+  parameterKey: string
 }
 
 export interface StateModel {
