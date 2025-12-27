@@ -5,7 +5,7 @@ import { EventTypeIndex, Observer } from '@/core/engine'
 import BaseView from '@/components/dashboard/BaseView'
 import { motion } from 'framer-motion'
 import LottieAnimation from '@/components/ui/lottie/LottieAnimation'
-import success from '@lottie/success.json'
+import inprogress from '@lottie/in-progress.json'
 import loader from '@lottie/Loadder.json'
 import { StatefulEventConfigurationPopover } from '@/components/ui/popover/StatefulEventConfigurationPopover'
 import { randomUUID } from "@/lib/crypto-util"
@@ -53,9 +53,9 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
             animate={ {opacity: 1, y: 0} }
             transition={ {duration: 0.6, ease: 'easeOut'} }
           >
-            <LottieAnimation loop={ !eventDidCalled && !!container.data.startEvent && !!container.data.stopEvent } animationJson={ eventDidCalled ? success : loader }
+            <LottieAnimation loop={ !!container.data.startEvent && !!container.data.stopEvent } animationJson={ eventDidCalled ? inprogress : loader }
                              className={ 'items-center justify-center align-middle flex' } height={ '60%' }
-                             width={ '60%' }/>
+                             width={ eventDidCalled ? '40%' : '60%' }/>
           </motion.div>
         </div>
       } configuration={
