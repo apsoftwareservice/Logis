@@ -1,20 +1,40 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { EventTypeIndex } from '@/core/engine'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
+import { Label } from "@/components/ui/label";
+import NestedSelect, { NestedObject } from "@/components/ui/nestedSelect";
+import { toast } from "react-toastify";
 
 export interface StatefulEventConfigurationPopoverProps {
   index: EventTypeIndex
   currentStartEvent: string
   currentStopEvent: string
-  onChange: (startEvent: string, stopEvent: string) => void
+  currentParameterKey: string
+  onChange: (startEvent: string, stopEvent: string, parameterKey: string) => void
 }
 
-export function StatefulEventConfigurationPopover({index, currentStartEvent, currentStopEvent, onChange}: StatefulEventConfigurationPopoverProps) {
+export function StatefulEventConfigurationPopover({index, currentStartEvent, currentStopEvent, currentParameterKey, onChange}: StatefulEventConfigurationPopoverProps) {
   const [ isOpen, setIsOpen ] = useState(false)
   const [ startEvent, setStartEvent ] = useState<string>(currentStartEvent)
   const [ stopEvent, setStopEvent ] = useState<string>(currentStopEvent)
+  const [ parameterKey, setParameterKey ] = useState<string>(currentParameterKey)
+  const [ options, setOptions ] = useState<NestedObject>()
+
+  useEffect(() => {
+    const bucket = index.getBucket(startEvent)
+
+    if (bucket) {
+      const data = bucket?.first()
+
+      if (data) {
+        setOptions(data as NestedObject)
+      } else {
+        toast.warning('Event has no data')
+      }
+    }
+  }, [ index, startEvent ])
 
   return (
     <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
@@ -63,13 +83,25 @@ export function StatefulEventConfigurationPopover({index, currentStartEvent, cur
               )) }
             </SelectContent>
           </Select>
+          { startEvent && (
+              <>
+                <div className="grid gap-2 pt-2">
+                  <Label className="text-gray-500">Value (optional)</Label>
+                  { options && (
+                      <NestedSelect value={parameterKey} data={ options } onSelect={ (value) => {
+                        setParameterKey(value)
+                      } }/>
+                  ) }
+                </div>
+              </>
+          ) }
         </div>
         </div>
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button
             variant="default"
             onClick={ () => {
-              onChange(startEvent, stopEvent)
+              onChange(startEvent, stopEvent, parameterKey)
               setIsOpen(false)
             } }
           >

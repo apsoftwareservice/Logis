@@ -9,10 +9,12 @@ import inprogress from '@lottie/in-progress.json'
 import loader from '@lottie/Loadder.json'
 import { StatefulEventConfigurationPopover } from '@/components/ui/popover/StatefulEventConfigurationPopover'
 import { randomUUID } from "@/lib/crypto-util"
+import { getNestedValue } from "@/lib/utils";
 
 export function StatefulEventView({container}: { container: DashboardContainer<StatefulEventModel> }) {
   const {registerObserver, index, setContainer} = useDashboard()
   const [ eventDidCalled, setEventDidCalled ] = React.useState(false)
+  const [ parameter, setParameter ] = React.useState('')
 
   useEffect( () => {
     if(!index?.current) return
@@ -32,6 +34,12 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
       const lastStartEvent = startEventBucket.getLastEventAtOrBefore(timestampMs)
       const lastStopEvent = stopEventBucket.getLastEventAtOrBefore(timestampMs)
 
+      if (lastStartEvent?.data && container.data.parameterKey) {
+        setParameter(getNestedValue(lastStartEvent.data as any, container.data.parameterKey))
+      } else {
+        setParameter('')
+      }
+
       const shouldBeCalled = !!lastStartEvent && (!lastStopEvent || lastStopEvent.timestampMs < lastStartEvent.timestampMs)
 
       setEventDidCalled(prev => {
@@ -47,7 +55,8 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
     <BaseView
       className={ '' }
       body={
-        <div className="flex w-full h-full justify-center items-center overflow-hidden">
+      <>
+        <div className="flex w-full justify-center items-center overflow-hidden">
           <motion.div
             initial={ {opacity: 0, y: 10} }
             animate={ {opacity: 1, y: 0} }
@@ -58,6 +67,12 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
                              width={ eventDidCalled ? '40%' : '60%' }/>
           </motion.div>
         </div>
+        <div className="flex w-full justify-center items-center">
+          <h4 className="font-bold text-gray-800 text-sm dark:text-white/90">
+            { eventDidCalled ? parameter : '' }
+          </h4>
+        </div>
+      </>
       } configuration={
       <>
         { index?.current && (
@@ -65,8 +80,9 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
             index={ index.current }
             currentStartEvent={ container.data.startEvent }
             currentStopEvent={ container.data.stopEvent }
-            onChange={ (startEvent, stopEvent) => {
-              setContainer({ ...container, data: {startEvent: startEvent, stopEvent: stopEvent } })
+            currentParameterKey={ container.data.parameterKey }
+            onChange={ (startEvent, stopEvent, parameterKey) => {
+              setContainer({ ...container, data: {startEvent: startEvent, stopEvent: stopEvent, parameterKey: parameterKey} })
             } }
           />
         ) }
