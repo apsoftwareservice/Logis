@@ -1,331 +1,345 @@
 "use client"
-import React, { useCallback, useEffect, useRef, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { useSidebar } from "../context/SidebarContext"
-import { Box, ChevronDownIcon, LayoutTemplate, Minus, PieChartIcon } from "lucide-react"
+
+import React, {useEffect, useState} from "react"
+
+import {
+  ChevronDownIcon,
+  LayoutTemplate, Pin, RefreshCcw, Trash, File as FileIcon, Folder
+} from "lucide-react"
+import {useSidebar} from "@/context/SidebarContext";
+import {useDashboard} from "@/context/DashboardContext";
+import {cn} from "@/lib/utils";
+
+const LOCAL_STORAGE_REPO_KEY = "dashboard:preset-repo-url"
+
+/* -------------------- TYPES -------------------- */
 
 type NavItem = {
-  name: string;
-  icon: React.ReactNode;
-  path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
-};
+  name: string
+  icon: React.ReactNode
+  path?: string
+  subItems?: { name: string; path: string }[]
+}
+
+type RepoNode = {
+  name: string
+  path: string
+  type: "file" | "dir"
+  download_url?: string
+  children?: RepoNode[]
+  isOpen?: boolean
+}
+
+/* -------------------- NAV ITEMS -------------------- */
 
 const navItems: NavItem[] = [
   {
-    icon: <LayoutTemplate/>,
-    name: "Dashboard",
-    path: "/"
+    icon: <LayoutTemplate />,
+    name: "Presets"
   }
 ]
 
 const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon/>,
-    name: "Charts",
-    subItems: [
-      {name: "Line Chart", path: "/line-chart", pro: false},
-      {name: "Bar Chart", path: "/bar-chart", pro: false}
-    ]
-  },
-  {
-    icon: <Box/>,
-    name: "UI Elements",
-    subItems: [
-      {name: "Alerts", path: "/alerts", pro: false},
-      {name: "Avatar", path: "/avatars", pro: false},
-      {name: "Badge", path: "/badge", pro: false},
-      {name: "Buttons", path: "/buttons", pro: false},
-      {name: "Images", path: "/images", pro: false},
-      {name: "Videos", path: "/videos", pro: false}
-    ]
-  }
+  // {
+  //   icon: <PieChartIcon />,
+  //   name: "Charts",
+  //   subItems: [
+  //     { name: "Line Chart", path: "/line-chart" },
+  //     { name: "Bar Chart", path: "/bar-chart" }
+  //   ]
+  // },
+  // {
+  //   icon: <Box />,
+  //   name: "UI Elements",
+  //   subItems: [
+  //     { name: "Alerts", path: "/alerts" },
+  //     { name: "Buttons", path: "/buttons" }
+  //   ]
+  // }
 ]
 
-const AppSidebar: React.FC = () => {
-  const {isExpanded, isMobileOpen, isHovered, setIsHovered} = useSidebar()
-  const pathname = usePathname()
+/* -------------------- GITHUB FETCH -------------------- */
 
-  const renderMenuItems = (
-    navItems: NavItem[],
-    menuType: "main" | "others"
-  ) => (
-    <ul className="flex flex-col gap-4">
-      { navItems.map((nav, index) => (
-        <li key={ nav.name }>
-          { nav.subItems ? (
-            <button
-              onClick={ () => handleSubmenuToggle(index, menuType) }
-              className={ `menu-item group  ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-              }` }
-            >
-              <span
-                className={ ` ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }` }
-              >
-                { nav.icon }
-              </span>
-              { (isExpanded || isHovered || isMobileOpen) && (
-                <span className={ `menu-item-text` }>{ nav.name }</span>
-              ) }
-              { (isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={ `ml-auto w-5 h-5 transition-transform duration-200  ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }` }
-                />
-              ) }
-            </button>
-          ) : (
-            nav.path && (
-              <Link
-                href={ nav.path }
-                className={ `menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }` }
-              >
-                <span
-                  className={ `${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }` }
-                >
-                  { nav.icon }
-                </span>
-                { (isExpanded || isHovered || isMobileOpen) && (
-                  <span className={ `menu-item-text` }>{ nav.name }</span>
-                ) }
-              </Link>
-            )
-          ) }
-          { nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-            <div
-              ref={ (el) => {
-                subMenuRefs.current[`${ menuType }-${ index }`] = el
-              } }
-              className="overflow-hidden transition-all duration-300"
-              style={ {
-                height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${ subMenuHeight[`${ menuType }-${ index }`] }px`
-                    : "0px"
-              } }
-            >
-              <ul className="mt-2 space-y-1 ml-9">
-                { nav.subItems.map((subItem) => (
-                  <li key={ subItem.name }>
-                    <Link
-                      href={ subItem.path }
-                      className={ `menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }` }
-                    >
-                      { subItem.name }
-                      <span className="flex items-center gap-1 ml-auto">
-                        { subItem.new && (
-                          <span
-                            className={ `ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge ` }
-                          >
-                            new
-                          </span>
-                        ) }
-                        { subItem.pro && (
-                          <span
-                            className={ `ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge ` }
-                          >
-                            pro
-                          </span>
-                        ) }
-                      </span>
-                    </Link>
-                  </li>
-                )) }
-              </ul>
-            </div>
-          ) }
-        </li>
-      )) }
-    </ul>
+const fetchRepoTree = async (
+    owner: string,
+    repo: string,
+    path = ""
+): Promise<RepoNode[]> => {
+  const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
   )
 
-  const [ openSubmenu, setOpenSubmenu ] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null)
-  const [ subMenuHeight, setSubMenuHeight ] = useState<Record<string, number>>(
-    {}
-  )
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  if (!res.ok) throw new Error("GitHub fetch failed")
 
-  // const isActive = (path: string) => path === pathname;
-  const isActive = useCallback((path: string) => path === pathname, [ pathname ])
+  const data = await res.json()
 
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    [ "main", "others" ].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index
-              })
-              submenuMatched = true
-            }
-          })
-        }
-      })
-    })
+  return data.map((item: any) => ({
+    name: item.name,
+    path: item.path,
+    type: item.type,
+    download_url: item.download_url ?? undefined,
+    children: item.type === "dir" ? [] : undefined,
+    isOpen: false
+  }))
+}
 
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null)
+
+/* -------------------- FILE TREE -------------------- */
+
+const FileTree: React.FC<{
+  nodes: RepoNode[]
+  owner: string
+  repo: string
+  level?: number
+}> = ({ nodes, owner, repo, level = 0 }) => {
+  const [tree, setTree] = useState(nodes)
+  const { parseFiles } = useDashboard()
+
+  const toggleFolder = async (index: number) => {
+    const node = tree[index]
+
+    if (!node.isOpen && node.children?.length === 0) {
+      const children = await fetchRepoTree(owner, repo, node.path)
+      node.children = children
     }
-  }, [ pathname, isActive ])
 
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${ openSubmenu.type }-${ openSubmenu.index }`
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0
-        }))
-      }
+    setTree(prev =>
+        prev.map((n, i) =>
+            i === index ? { ...n, isOpen: !n.isOpen } : n
+        )
+    )
+  }
+
+  const githubFileToFile = async (node: RepoNode): Promise<File> => {
+    if (!node.download_url) {
+      throw new Error("No download URL for file")
     }
-  }, [ openSubmenu ])
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null
-      }
-      return {type: menuType, index}
+    const response = await fetch(node.download_url)
+    const blob = await response.blob()
+
+    return new File([blob], node.name, {
+      type: blob.type || "text/plain"
     })
+  }
+
+  const selectNode = async (node: RepoNode) => {
+    if (node.type !== "file") return
+    const file = await githubFileToFile(node)
+    await parseFiles([file])
   }
 
   return (
-    <aside
-      className={ `fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-        isExpanded || isMobileOpen
-          ? "w-[290px]"
-          : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
-      }
-        ${ isMobileOpen ? "translate-x-0" : "-translate-x-full" }
-        lg:translate-x-0` }
-      onMouseEnter={ () => !isExpanded && setIsHovered(false) }
-      onMouseLeave={ () => setIsHovered(false) }
-    >
-      <div
-        className={ `py-8 flex  ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }` }
-      >
-        <Link href="/">
-          { isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={ 100 }
-                height={ 40 }
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={ 100 }
-                height={ 40 }
-              />
-            </>
-          ) : (
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={ 32 }
-              height={ 32 }
-            />
-          ) }
-        </Link>
-      </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={ `mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }` }
-              >
-                { isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <Minus/>
-                ) }
-              </h2>
-              { renderMenuItems(navItems, "main") }
-            </div>
+      <ul className="space-y-1">
+        {tree.map((node, i) => (
+            <li key={node.path} style={{ paddingLeft: level * 12 }}>
+              {node.type === "dir" ? (
+                  <>
+                    <button
+                        onClick={() => toggleFolder(i)}
+                        className="flex items-center gap-2 text-sm text-gray-600 dark:text-white cursor-pointer hover:text-brand-500 dark:hover:text-brand-300"
+                    >
+                      <ChevronDownIcon
+                          className={`w-4 h-4 transition ${
+                              node.isOpen ? "rotate-180" : ""
+                          }`}
+                      />
+                      <Folder className={'fill-brand-200'} width={'15px'}/> {node.name}
+                    </button>
 
-            <div className="">
-              <h2
-                className={ `mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }` }
-              >
-                { isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <Minus/>
-                ) }
-              </h2>
-              { renderMenuItems(othersItems, "others") }
-            </div>
+                    {node.isOpen && node.children && (
+                        <FileTree
+                            nodes={node.children}
+                            owner={owner}
+                            repo={repo}
+                            level={level + 1}
+                        />
+                    )}
+                  </>
+              ) : (
+                  <div
+                      className="flex items-center gap-2 text-sm text-gray-600 dark:text-white cursor-pointer hover:text-brand-500 dark:hover:text-brand-300"
+                      onClick={() => selectNode(node)}
+                  >
+                    <FileIcon width={'15px'}/> {node.name}
+                  </div>
+              )}
+            </li>
+        ))}
+      </ul>
+  )
+}
+
+/* -------------------- SIDEBAR -------------------- */
+
+const parseGithubRepoUrl = (url: string) => {
+  const parts = url.replace(".git", "").split("/")
+  if (parts.length < 5) return null
+
+  const owner = parts[3]
+  const repo = parts[4]
+
+  return { owner, repo }
+}
+
+const clearRepository = (
+  setRepoUrl: (v: string) => void,
+  setRepoTree: (v: RepoNode[]) => void,
+  setRepoInfo: (v: { owner: string; repo: string } | null) => void
+) => {
+  localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
+  setRepoUrl("")
+  setRepoTree([])
+  setRepoInfo(null)
+}
+
+const AppSidebar: React.FC = () => {
+  const { isExpanded, isHovered, setIsHovered, toggleSidebar, toggleMobileSidebar } = useSidebar()
+  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null)
+  const [repoUrl, setRepoUrl] = useState("")
+  const [repoTree, setRepoTree] = useState<RepoNode[]>([])
+  const [repoInfo, setRepoInfo] = useState<{ owner: string; repo: string } | null>(null)
+  const [loadingRepo, setLoadingRepo] = useState(false)
+
+  useEffect(() => {
+    const savedRepoUrl = localStorage.getItem(LOCAL_STORAGE_REPO_KEY)
+    if (!savedRepoUrl) return
+
+    const parsed = parseGithubRepoUrl(savedRepoUrl)
+    if (!parsed) return
+
+    const loadSavedRepo = async () => {
+      try {
+        setLoadingRepo(true)
+
+        const { owner, repo } = parsed
+        const tree = await fetchRepoTree(owner, repo)
+
+        setRepoUrl(savedRepoUrl)
+        setRepoTree(tree)
+        setRepoInfo({ owner, repo })
+      } catch (e) {
+        console.warn("Failed to restore saved repo", e)
+        localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
+      } finally {
+        setLoadingRepo(false)
+      }
+    }
+
+    loadSavedRepo().then()
+  }, [])
+
+  const handleRefreshRepo = async () => {
+    if (!repoInfo) return
+
+    try {
+      setLoadingRepo(true)
+      const tree = await fetchRepoTree(repoInfo.owner, repoInfo.repo)
+      setRepoTree(tree)
+    } catch (e) {
+      console.error("Failed to refresh repository", e)
+      alert("Failed to refresh repository")
+    } finally {
+      setLoadingRepo(false)
+    }
+  }
+
+  const handleAddRepo = async () => {
+    try {
+      setLoadingRepo(true)
+
+      const parsed = parseGithubRepoUrl(repoUrl)
+      if (!parsed) throw new Error("Invalid repo URL")
+
+      const { owner, repo } = parsed
+      const tree = await fetchRepoTree(owner, repo)
+
+      setRepoTree(tree)
+      setRepoInfo({ owner, repo })
+
+      // ✅ SAVE TO LOCAL STORAGE
+      localStorage.setItem(LOCAL_STORAGE_REPO_KEY, repoUrl)
+    } catch (e) {
+      console.error(e)
+      alert("Failed to load repository")
+    } finally {
+      setLoadingRepo(false)
+    }
+  }
+
+  return (
+      <aside className={`flex h-full bg-white dark:bg-gray-900 border-r dark:border-gray-700 mb-32 transition-all
+      ${isExpanded || isHovered ? "w-[290px]" : "w-[60px]"}`}
+          onMouseEnter={() => !isExpanded && setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+      >
+        <nav className="p-5 space-y-4 w-full">
+          <Pin width={'15px'}  className={cn('cursor-pointer dark:text-white', isExpanded && 'fill-black dark:fill-white')} onClick={() => window.innerWidth >= 1024 ? toggleSidebar() : toggleMobileSidebar() }/>
+          {/* DASHBOARD */}
+          <div className={'flex justify-between w-full text-black dark:text-white'}>
+            <button onClick={() => setOpenSubmenu(openSubmenu === 0 ? null : 0)} className="flex items-center gap-3 text-sm font-medium">
+              {/*<LayoutTemplate />*/}
+              {(isExpanded || isHovered) && "Presets"}
+              <ChevronDownIcon className={`ml-auto w-4 h-4 transition ${ openSubmenu === 0 ? "rotate-180" : "" }`}/>
+            </button>
+
+            {repoInfo && (isExpanded || isHovered) && (
+              <div className="flex gap-2">
+                <RefreshCcw onClick={() => loadingRepo && handleRefreshRepo() }
+                            className="flex-1 py-1 text-xs hover:bg-gray-100 disabled:opacity-50"
+                />
+              </div>
+            )}
           </div>
+
+          {openSubmenu === 0 && (isExpanded || isHovered) && (
+            <div className="ml-6 space-y-3">
+              <div className={'flex gap-2 items-center align-middle justify-between'}>
+                <input
+                  value={repoUrl}
+                  onChange={e => setRepoUrl(e.target.value)}
+                  placeholder="https://github.com/user/repo"
+                  disabled={!!repoInfo}
+                  className="w-full px-2 py-1 text-sm text-black dark:text-white border dark:border-gray-700 rounded disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                />
+                <Trash onClick={() =>
+                    clearRepository(setRepoUrl, setRepoTree, setRepoInfo)
+                  }
+                  className="flex p-1 text-xs text-red-500 hover:fill-red-600 cursor-pointer"
+                >
+                </Trash>
+              </div>
+
+              { !repoInfo && (
+                <button
+                  onClick={handleAddRepo}
+                  className="w-full py-1 text-sm bg-brand-500 text-white rounded"
+                >
+                  {loadingRepo ? "Loading..." : "Add Repository"}
+                </button>
+              )}
+
+              {repoTree.length > 0 && repoInfo && (
+                <FileTree
+                  nodes={repoTree}
+                  owner={repoInfo.owner}
+                  repo={repoInfo.repo}
+                />
+              )}
+            </div>
+          )}
+
+          {/* OTHERS */}
+          {othersItems.map(item => (
+            <div key={item.name}>
+            <span className="flex items-center gap-3 text-sm">
+              {/*{item.icon}*/}
+              {(isExpanded || isHovered) && item.name}
+            </span>
+              </div>
+          ))}
         </nav>
-      </div>
-    </aside>
+      </aside>
   )
 }
 
