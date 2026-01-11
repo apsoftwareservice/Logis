@@ -30,6 +30,15 @@ type RepoNode = {
   isOpen?: boolean
 }
 
+type GitProvider = "github" | "gitlab" | "bitbucket"
+
+type RepoInfo = {
+  owner: string
+  repo: string
+  provider: GitProvider
+  baseUrl?: string
+}
+
 /* -------------------- NAV ITEMS -------------------- */
 
 const navItems: NavItem[] = [
@@ -58,29 +67,126 @@ const othersItems: NavItem[] = [
   // }
 ]
 
-/* -------------------- GITHUB FETCH -------------------- */
+/* -------------------- GIT PROVIDER DETECTION -------------------- */
+
+const detectProvider = (url: string): GitProvider | null => {
+  const urlLower = url.toLowerCase()
+  if (urlLower.includes("github.com")) return "github"
+  if (urlLower.includes("gitlab.com") || urlLower.includes("gitlab.")) return "gitlab"
+  if (urlLower.includes("bitbucket.org") || urlLower.includes("bitbucket.")) return "bitbucket"
+  return null
+}
+
+const parseRepoUrl = (url: string): RepoInfo | null => {
+  const provider = detectProvider(url)
+  if (!provider) return null
+
+  const cleanUrl = url.replace(".git", "").replace(/\/$/, "")
+  
+  try {
+    const urlObj = new URL(cleanUrl)
+    const pathParts = urlObj.pathname.split("/").filter(Boolean)
+    
+    if (pathParts.length < 2) return null
+
+    if (provider === "github") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: "https://api.github.com" }
+    } else if (provider === "gitlab") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: `https://${urlObj.hostname}/api/v4` }
+    } else if (provider === "bitbucket") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: "https://api.bitbucket.org/2.0" }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+/* -------------------- GIT REPO FETCH -------------------- */
 
 const fetchRepoTree = async (
-    owner: string,
-    repo: string,
+    repoInfo: RepoInfo,
     path = ""
 ): Promise<RepoNode[]> => {
-  const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
-  )
+  const { owner, repo, provider, baseUrl } = repoInfo
 
-  if (!res.ok) throw new Error("GitHub fetch failed")
+  let apiUrl: string
+  let transformResponse: (data: any) => RepoNode[]
+
+  if (provider === "github") {
+    apiUrl = `${baseUrl}/repos/${owner}/${repo}/contents/${path}`
+    transformResponse = (data: any) => {
+      if (!Array.isArray(data)) data = [data]
+      return data.map((item: any) => ({
+        name: item.name,
+        path: item.path,
+        type: item.type === "dir" ? "dir" : "file",
+        download_url: item.download_url ?? undefined,
+        children: item.type === "dir" ? [] : undefined,
+        isOpen: false
+      }))
+    }
+  } else if (provider === "gitlab") {
+    const encodedPath = path ? encodeURIComponent(path) : ""
+    apiUrl = `${baseUrl}/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`
+    transformResponse = (data: any) => {
+      if (!Array.isArray(data)) data = [data]
+      return data.map((item: any) => ({
+        name: item.name,
+        path: item.path,
+        type: item.type === "tree" ? "dir" : "file",
+        download_url: item.type === "blob" ? `${baseUrl}/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/files/${encodeURIComponent(item.path)}/raw?ref=HEAD` : undefined,
+        children: item.type === "tree" ? [] : undefined,
+        isOpen: false
+      }))
+    }
+  } else if (provider === "bitbucket") {
+    // Bitbucket API structure: /src/HEAD/{path} returns HTML, we need to use /src endpoint
+    // Note: Bitbucket API v2.0 has limitations for public repos without auth
+    // This is a simplified implementation
+    apiUrl = `${baseUrl}/repositories/${owner}/${repo}/src/HEAD/${path || ""}`
+    transformResponse = (data: any) => {
+      // Bitbucket may return different structures, handle both
+      let items: any[] = []
+      if (Array.isArray(data)) {
+        items = data
+      } else if (data && data.values && Array.isArray(data.values)) {
+        items = data.values
+      } else if (data && typeof data === "object") {
+        items = Object.keys(data).map(key => ({ name: key, ...data[key] }))
+      }
+      
+      return items.map((item: any) => {
+        const itemPath = item.path || item.name || item
+        const itemName = typeof itemPath === "string" ? itemPath.split("/").pop() || itemPath : item.name || "unknown"
+        const fullPath = path ? `${path}/${itemName}` : itemName
+        const itemType = item.type === "commit_directory" || item.type === "directory" ? "dir" : "file"
+        
+        return {
+          name: itemName,
+          path: fullPath,
+          type: itemType,
+          download_url: itemType === "file" && item.links?.self?.href ? item.links.self.href : undefined,
+          children: itemType === "dir" ? [] : undefined,
+          isOpen: false
+        }
+      })
+    }
+  } else {
+    throw new Error(`Unsupported provider: ${provider}`)
+  }
+
+  const res = await fetch(apiUrl)
+  if (!res.ok) {
+    throw new Error(`${provider} fetch failed: ${res.statusText}`)
+  }
 
   const data = await res.json()
-
-  return data.map((item: any) => ({
-    name: item.name,
-    path: item.path,
-    type: item.type,
-    download_url: item.download_url ?? undefined,
-    children: item.type === "dir" ? [] : undefined,
-    isOpen: false
-  }))
+  return transformResponse(data)
 }
 
 
@@ -88,10 +194,9 @@ const fetchRepoTree = async (
 
 const FileTree: React.FC<{
   nodes: RepoNode[]
-  owner: string
-  repo: string
+  repoInfo: RepoInfo
   level?: number
-}> = ({ nodes, owner, repo, level = 0 }) => {
+}> = ({ nodes, repoInfo, level = 0 }) => {
   const [tree, setTree] = useState(nodes)
   const { parseFiles } = useDashboard()
 
@@ -99,7 +204,7 @@ const FileTree: React.FC<{
     const node = tree[index]
 
     if (!node.isOpen && node.children?.length === 0) {
-      const children = await fetchRepoTree(owner, repo, node.path)
+      const children = await fetchRepoTree(repoInfo, node.path)
       node.children = children
     }
 
@@ -110,7 +215,7 @@ const FileTree: React.FC<{
     )
   }
 
-  const githubFileToFile = async (node: RepoNode): Promise<File> => {
+  const gitFileToFile = async (node: RepoNode): Promise<File> => {
     if (!node.download_url) {
       throw new Error("No download URL for file")
     }
@@ -125,7 +230,7 @@ const FileTree: React.FC<{
 
   const selectNode = async (node: RepoNode) => {
     if (node.type !== "file") return
-    const file = await githubFileToFile(node)
+    const file = await gitFileToFile(node)
     await parseFiles([file])
   }
 
@@ -150,8 +255,7 @@ const FileTree: React.FC<{
                     {node.isOpen && node.children && (
                         <FileTree
                             nodes={node.children}
-                            owner={owner}
-                            repo={repo}
+                            repoInfo={repoInfo}
                             level={level + 1}
                         />
                     )}
@@ -172,20 +276,10 @@ const FileTree: React.FC<{
 
 /* -------------------- SIDEBAR -------------------- */
 
-const parseGithubRepoUrl = (url: string) => {
-  const parts = url.replace(".git", "").split("/")
-  if (parts.length < 5) return null
-
-  const owner = parts[3]
-  const repo = parts[4]
-
-  return { owner, repo }
-}
-
 const clearRepository = (
   setRepoUrl: (v: string) => void,
   setRepoTree: (v: RepoNode[]) => void,
-  setRepoInfo: (v: { owner: string; repo: string } | null) => void
+  setRepoInfo: (v: RepoInfo | null) => void
 ) => {
   localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
   setRepoUrl("")
@@ -198,26 +292,25 @@ const AppSidebar: React.FC = () => {
   const [openSubmenu, setOpenSubmenu] = useState<number | null>(null)
   const [repoUrl, setRepoUrl] = useState("")
   const [repoTree, setRepoTree] = useState<RepoNode[]>([])
-  const [repoInfo, setRepoInfo] = useState<{ owner: string; repo: string } | null>(null)
+  const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null)
   const [loadingRepo, setLoadingRepo] = useState(false)
 
   useEffect(() => {
     const savedRepoUrl = localStorage.getItem(LOCAL_STORAGE_REPO_KEY)
     if (!savedRepoUrl) return
 
-    const parsed = parseGithubRepoUrl(savedRepoUrl)
+    const parsed = parseRepoUrl(savedRepoUrl)
     if (!parsed) return
 
     const loadSavedRepo = async () => {
       try {
         setLoadingRepo(true)
 
-        const { owner, repo } = parsed
-        const tree = await fetchRepoTree(owner, repo)
+        const tree = await fetchRepoTree(parsed)
 
         setRepoUrl(savedRepoUrl)
         setRepoTree(tree)
-        setRepoInfo({ owner, repo })
+        setRepoInfo(parsed)
       } catch (e) {
         console.warn("Failed to restore saved repo", e)
         localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
@@ -234,7 +327,7 @@ const AppSidebar: React.FC = () => {
 
     try {
       setLoadingRepo(true)
-      const tree = await fetchRepoTree(repoInfo.owner, repoInfo.repo)
+      const tree = await fetchRepoTree(repoInfo)
       setRepoTree(tree)
     } catch (e) {
       console.error("Failed to refresh repository", e)
@@ -248,14 +341,13 @@ const AppSidebar: React.FC = () => {
     try {
       setLoadingRepo(true)
 
-      const parsed = parseGithubRepoUrl(repoUrl)
-      if (!parsed) throw new Error("Invalid repo URL")
+      const parsed = parseRepoUrl(repoUrl)
+      if (!parsed) throw new Error("Invalid repo URL. Supported providers: GitHub, GitLab, Bitbucket")
 
-      const { owner, repo } = parsed
-      const tree = await fetchRepoTree(owner, repo)
+      const tree = await fetchRepoTree(parsed)
 
       setRepoTree(tree)
-      setRepoInfo({ owner, repo })
+      setRepoInfo(parsed)
 
       // ✅ SAVE TO LOCAL STORAGE
       localStorage.setItem(LOCAL_STORAGE_REPO_KEY, repoUrl)
@@ -322,8 +414,7 @@ const AppSidebar: React.FC = () => {
               {repoTree.length > 0 && repoInfo && (
                 <FileTree
                   nodes={repoTree}
-                  owner={repoInfo.owner}
-                  repo={repoInfo.repo}
+                  repoInfo={repoInfo}
                 />
               )}
             </div>
