@@ -13,17 +13,18 @@ export interface BaseViewProps {
   body: ReactElement
   className?: string
   configuration: ReactElement
+  menuItems?: ReactElement[]
   container: DashboardContainer<any>
 }
 
-export default function BaseView({body, className, configuration, container}: BaseViewProps) {
+export default function BaseView({body, className, configuration, container, menuItems}: BaseViewProps) {
   const {updateContainerTitle, lockGrid, removeContainer} = useDashboard()
   const [ isDropdownOpen, setIsDropdownOpen ] = useState<boolean>(false)
 
   return (
     <div
       className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
         <div className={ 'flex items-center gap-3 align-middle min-w-0' }>
           <input
             type="text"
@@ -35,6 +36,16 @@ export default function BaseView({body, className, configuration, container}: Ba
             className={ cn("min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent ", !lockGrid && "border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400") }
           />
         </div>
+
+        { menuItems && (
+          <div className="flex items-center gap-2">
+            { menuItems.map((item, index) => (
+              <div key={ index }>
+                { item }
+              </div>
+            )) }
+          </div>
+        )}
 
         <div className="">
           <button onClick={ () => setIsDropdownOpen(true) } className="dropdown-toggle">
