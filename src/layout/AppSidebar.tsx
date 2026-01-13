@@ -87,7 +87,7 @@ const parseRepoUrl = (url: string): RepoInfo | null => {
     const urlObj = new URL(cleanUrl)
     const pathParts = urlObj.pathname.split("/").filter(Boolean)
     
-    if (pathParts.length < 2) return null
+    if (pathParts.length < 1) return null
 
     if (provider === "github") {
       const [owner, repo] = pathParts
@@ -132,7 +132,8 @@ const fetchRepoTree = async (
     }
   } else if (provider === "gitlab") {
     const encodedPath = path ? encodeURIComponent(path) : ""
-    apiUrl = `${baseUrl}/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`
+    const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
+    apiUrl = [baseUrl, 'projects', projectSegment || null, 'repository', `tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`].filter(Boolean).join('/');
     transformResponse = (data: any) => {
       if (!Array.isArray(data)) data = [data]
       return data.map((item: any) => ({
