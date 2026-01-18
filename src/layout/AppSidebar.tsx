@@ -136,14 +136,17 @@ const fetchRepoTree = async (
     apiUrl = [baseUrl, 'projects', projectSegment || null, 'repository', `tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`].filter(Boolean).join('/');
     transformResponse = (data: any) => {
       if (!Array.isArray(data)) data = [data]
-      return data.map((item: any) => ({
-        name: item.name,
-        path: item.path,
-        type: item.type === "tree" ? "dir" : "file",
-        download_url: item.type === "blob" ? `${baseUrl}/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/files/${encodeURIComponent(item.path)}/raw?ref=HEAD` : undefined,
-        children: item.type === "tree" ? [] : undefined,
-        isOpen: false
-      }))
+      return data.map((item: any) => {
+        const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
+        return ({
+          name: item.name,
+          path: item.path,
+          type: item.type === "tree" ? "dir" : "file",
+          download_url: item.type === "blob" ? `${baseUrl}/projects/${projectSegment}/repository/files/${encodeURIComponent(item.path)}/raw?ref=HEAD` : undefined,
+          children: item.type === "tree" ? [] : undefined,
+          isOpen: false
+        })
+      })
     }
   } else if (provider === "bitbucket") {
     // Bitbucket API structure: /src/HEAD/{path} returns HTML, we need to use /src endpoint

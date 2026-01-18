@@ -18,9 +18,10 @@ export function ActionView({container}: { container: DashboardContainer<ActionMo
 
   useEffect(() => {
     if (isSuccess !== undefined) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         setIsSuccess(undefined)
       }, 3000)
+      return () => clearTimeout(timeoutId)
     }
   }, [isSuccess])
 
@@ -39,7 +40,7 @@ export function ActionView({container}: { container: DashboardContainer<ActionMo
         try {
           const urlObj = new URL(config.url)
           config.params.forEach(param => {
-            if (param.key.trim()) {
+            if (param.key && param.key.trim()) {
               urlObj.searchParams.append(param.key, param.value)
             }
           })
@@ -54,7 +55,7 @@ export function ActionView({container}: { container: DashboardContainer<ActionMo
       const headers: Record<string, string> = {}
       if (config.headers && config.headers.length > 0) {
         config.headers.forEach(header => {
-          if (header.key.trim()) {
+          if (header.key && header.key.trim()) {
             headers[header.key] = header.value
           }
         })
@@ -84,8 +85,23 @@ export function ActionView({container}: { container: DashboardContainer<ActionMo
       
       // Check if status is 200-204
       if (response.status >= 200 && response.status <= 204) {
-        console.log(await response.json())
-        setIsSuccess(true)
+        try {
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            const responseData = await response.json()
+            console.log(responseData)
+          } else {
+            const responseText = await response.text()
+            if (responseText) {
+              console.log(responseText)
+            }
+          }
+          setIsSuccess(true)
+        } catch (parseError) {
+          console.error('Failed to parse response:', parseError)
+          // Still mark as success if status code is valid
+          setIsSuccess(true)
+        }
         setIsLoading(false)
       } else {
         setIsSuccess(false)

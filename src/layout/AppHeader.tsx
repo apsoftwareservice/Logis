@@ -11,6 +11,7 @@ import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
 import Badge from '@/components/ui/badge/Badge'
 import ExportPreset from '@/components/header/ExportPreset'
+import ResetLogs from '@/components/header/ResetLogs'
 
 const AppHeader: React.FC = () => {
   const {index, sessionId} = useDashboard()
@@ -54,6 +55,7 @@ const AppHeader: React.FC = () => {
           <LiveSession/>
           { index?.current && <ExportPreset/> }
           { index?.current && <GridController/> }
+          { index?.current && <ResetLogs/> }
           <ThemeToggleButton/>
           { index?.current && <AddContainer/> }
         </div>
