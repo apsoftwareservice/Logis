@@ -124,6 +124,14 @@ Logis provides the building blocks for time-travel debugging dashboards:
 - Monitoring session activity or feature usage.
 - Teaching event-sourced systems and time-travel debugging.
 
+## Documentation
+
+For a detailed explanation of how the project works, see the **[documentation](./documentation/)** folder:
+
+- [**Architecture**](./documentation/architecture.md) — Data flow, event index, timeline engine, and how the UI updates.
+- [**Project structure**](./documentation/project-structure.md) — Folder layout and where to find key logic.
+- [**Containers and views**](./documentation/containers-and-views.md) — Dashboard card types and how they render at a given time.
+
 ## Contributing
 
 We welcome contributions. See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for how to set up the project, run tests, and submit pull requests.
