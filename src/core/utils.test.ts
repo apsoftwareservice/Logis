@@ -5,24 +5,34 @@ import { EventTypeIndex } from './engine'
 // react-toastify is used by EventTypeIndex.fromSortedBatch
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn() } }))
 
+/** Creates a File-like object for tests; jsdom Blob.slice() may not have .text(). */
+function createFileWithSlice(content: string): File {
+  const blob = {
+    text: () => Promise.resolve(content.slice(0, 1024)),
+  }
+  return {
+    slice: () => blob,
+  } as unknown as File
+}
+
 describe('detectFileFormat', () => {
   it('detects JSON array', async () => {
-    const file = new File(['[{"a":1}]'], 'x.json', { type: 'application/json' })
+    const file = createFileWithSlice('[{"a":1}]')
     expect(await detectFileFormat(file)).toBe(InputType.json)
   })
 
   it('detects JSON object', async () => {
-    const file = new File(['{"a":1}'], 'x.json', { type: 'application/json' })
+    const file = createFileWithSlice('{"a":1}')
     expect(await detectFileFormat(file)).toBe(InputType.json)
   })
 
   it('detects NDJSON when first line does not start with [ or {', async () => {
-    const file = new File(['id\n{"a":1}\n{"b":2}'], 'x.ndjson', { type: 'application/x-ndjson' })
+    const file = createFileWithSlice('id\n{"a":1}\n{"b":2}')
     expect(await detectFileFormat(file)).toBe(InputType.ndjson)
   })
 
   it('returns unknown for non-JSON', async () => {
-    const file = new File(['plain text'], 'x.txt', { type: 'text/plain' })
+    const file = createFileWithSlice('plain text')
     expect(await detectFileFormat(file)).toBe(InputType.unknown)
   })
 })
