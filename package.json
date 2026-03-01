@@ -6,7 +6,9 @@
     "build:server": "esbuild server.ts --bundle --platform=node --outfile=dist/server.js",
     "build": "npm run build:server && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
