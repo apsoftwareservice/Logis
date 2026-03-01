@@ -124,6 +124,10 @@ Logis provides the building blocks for time-travel debugging dashboards:
 - Monitoring session activity or feature usage.
 - Teaching event-sourced systems and time-travel debugging.
 
+## Contributing
+
+We welcome contributions. See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for how to set up the project, run tests, and submit pull requests.
+
 ## 📃 License
 
 Logis is released under the MIT License.

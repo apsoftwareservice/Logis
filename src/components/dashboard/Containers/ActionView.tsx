@@ -124,6 +124,7 @@ export function ActionView({container}: { container: DashboardContainer<ActionMo
       className={ '' }
       menuItems={
         [<Button
+            key="execute"
             onClick={ handleExecute }
             disabled={ isLoading || !container.data?.url }
             className="w-7 h-7 rounded-full border border-green-600 bg-green-50 dark:border-gray-700"

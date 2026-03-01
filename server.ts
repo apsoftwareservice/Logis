@@ -24,7 +24,6 @@ interface EventSourceState {
 
 // Global state (shared across imports)
 declare global {
-    // eslint-disable-next-line no-var
     var __esState: EventSourceState | undefined;
 }
 
