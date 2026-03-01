@@ -1,331 +1,440 @@
 "use client"
-import React, { useCallback, useEffect, useRef, useState } from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { usePathname } from "next/navigation"
-import { useSidebar } from "../context/SidebarContext"
-import { Box, ChevronDownIcon, LayoutTemplate, Minus, PieChartIcon } from "lucide-react"
+
+import React, {useEffect, useState} from "react"
+
+import {
+  ChevronDownIcon,
+  LayoutTemplate, Pin, RefreshCcw, Trash, File as FileIcon, Folder
+} from "lucide-react"
+import {useSidebar} from "@/context/SidebarContext";
+import {useDashboard} from "@/context/DashboardContext";
+import {cn} from "@/lib/utils";
+
+const LOCAL_STORAGE_REPO_KEY = "dashboard:preset-repo-url"
+
+/* -------------------- TYPES -------------------- */
 
 type NavItem = {
-  name: string;
-  icon: React.ReactNode;
-  path?: string;
-  subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
-};
+  name: string
+  icon: React.ReactNode
+  path?: string
+  subItems?: { name: string; path: string }[]
+}
+
+type RepoNode = {
+  name: string
+  path: string
+  type: "file" | "dir"
+  download_url?: string
+  children?: RepoNode[]
+  isOpen?: boolean
+}
+
+type GitProvider = "github" | "gitlab" | "bitbucket"
+
+type RepoInfo = {
+  owner: string
+  repo: string
+  provider: GitProvider
+  baseUrl?: string
+}
+
+/* -------------------- NAV ITEMS -------------------- */
 
 const navItems: NavItem[] = [
   {
-    icon: <LayoutTemplate/>,
-    name: "Dashboard",
-    path: "/"
+    icon: <LayoutTemplate />,
+    name: "Presets"
   }
 ]
 
 const othersItems: NavItem[] = [
-  {
-    icon: <PieChartIcon/>,
-    name: "Charts",
-    subItems: [
-      {name: "Line Chart", path: "/line-chart", pro: false},
-      {name: "Bar Chart", path: "/bar-chart", pro: false}
-    ]
-  },
-  {
-    icon: <Box/>,
-    name: "UI Elements",
-    subItems: [
-      {name: "Alerts", path: "/alerts", pro: false},
-      {name: "Avatar", path: "/avatars", pro: false},
-      {name: "Badge", path: "/badge", pro: false},
-      {name: "Buttons", path: "/buttons", pro: false},
-      {name: "Images", path: "/images", pro: false},
-      {name: "Videos", path: "/videos", pro: false}
-    ]
-  }
+  // {
+  //   icon: <PieChartIcon />,
+  //   name: "Charts",
+  //   subItems: [
+  //     { name: "Line Chart", path: "/line-chart" },
+  //     { name: "Bar Chart", path: "/bar-chart" }
+  //   ]
+  // },
+  // {
+  //   icon: <Box />,
+  //   name: "UI Elements",
+  //   subItems: [
+  //     { name: "Alerts", path: "/alerts" },
+  //     { name: "Buttons", path: "/buttons" }
+  //   ]
+  // }
 ]
 
-const AppSidebar: React.FC = () => {
-  const {isExpanded, isMobileOpen, isHovered, setIsHovered} = useSidebar()
-  const pathname = usePathname()
+/* -------------------- GIT PROVIDER DETECTION -------------------- */
 
-  const renderMenuItems = (
-    navItems: NavItem[],
-    menuType: "main" | "others"
-  ) => (
-    <ul className="flex flex-col gap-4">
-      { navItems.map((nav, index) => (
-        <li key={ nav.name }>
-          { nav.subItems ? (
-            <button
-              onClick={ () => handleSubmenuToggle(index, menuType) }
-              className={ `menu-item group  ${
-                openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? "menu-item-active"
-                  : "menu-item-inactive"
-              } cursor-pointer ${
-                !isExpanded && !isHovered
-                  ? "lg:justify-center"
-                  : "lg:justify-start"
-              }` }
-            >
-              <span
-                className={ ` ${
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }` }
-              >
-                { nav.icon }
-              </span>
-              { (isExpanded || isHovered || isMobileOpen) && (
-                <span className={ `menu-item-text` }>{ nav.name }</span>
-              ) }
-              { (isExpanded || isHovered || isMobileOpen) && (
-                <ChevronDownIcon
-                  className={ `ml-auto w-5 h-5 transition-transform duration-200  ${
-                    openSubmenu?.type === menuType &&
-                    openSubmenu?.index === index
-                      ? "rotate-180 text-brand-500"
-                      : ""
-                  }` }
-                />
-              ) }
-            </button>
-          ) : (
-            nav.path && (
-              <Link
-                href={ nav.path }
-                className={ `menu-item group ${
-                  isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-                }` }
-              >
-                <span
-                  className={ `${
-                    isActive(nav.path)
-                      ? "menu-item-icon-active"
-                      : "menu-item-icon-inactive"
-                  }` }
-                >
-                  { nav.icon }
-                </span>
-                { (isExpanded || isHovered || isMobileOpen) && (
-                  <span className={ `menu-item-text` }>{ nav.name }</span>
-                ) }
-              </Link>
-            )
-          ) }
-          { nav.subItems && (isExpanded || isHovered || isMobileOpen) && (
-            <div
-              ref={ (el) => {
-                subMenuRefs.current[`${ menuType }-${ index }`] = el
-              } }
-              className="overflow-hidden transition-all duration-300"
-              style={ {
-                height:
-                  openSubmenu?.type === menuType && openSubmenu?.index === index
-                    ? `${ subMenuHeight[`${ menuType }-${ index }`] }px`
-                    : "0px"
-              } }
-            >
-              <ul className="mt-2 space-y-1 ml-9">
-                { nav.subItems.map((subItem) => (
-                  <li key={ subItem.name }>
-                    <Link
-                      href={ subItem.path }
-                      className={ `menu-dropdown-item ${
-                        isActive(subItem.path)
-                          ? "menu-dropdown-item-active"
-                          : "menu-dropdown-item-inactive"
-                      }` }
-                    >
-                      { subItem.name }
-                      <span className="flex items-center gap-1 ml-auto">
-                        { subItem.new && (
-                          <span
-                            className={ `ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge ` }
-                          >
-                            new
-                          </span>
-                        ) }
-                        { subItem.pro && (
-                          <span
-                            className={ `ml-auto ${
-                              isActive(subItem.path)
-                                ? "menu-dropdown-badge-active"
-                                : "menu-dropdown-badge-inactive"
-                            } menu-dropdown-badge ` }
-                          >
-                            pro
-                          </span>
-                        ) }
-                      </span>
-                    </Link>
-                  </li>
-                )) }
-              </ul>
-            </div>
-          ) }
-        </li>
-      )) }
-    </ul>
-  )
+const detectProvider = (url: string): GitProvider | null => {
+  const urlLower = url.toLowerCase()
+  if (urlLower.includes("github.com")) return "github"
+  if (urlLower.includes("gitlab.com") || urlLower.includes("gitlab.")) return "gitlab"
+  if (urlLower.includes("bitbucket.org") || urlLower.includes("bitbucket.")) return "bitbucket"
+  return null
+}
 
-  const [ openSubmenu, setOpenSubmenu ] = useState<{
-    type: "main" | "others";
-    index: number;
-  } | null>(null)
-  const [ subMenuHeight, setSubMenuHeight ] = useState<Record<string, number>>(
-    {}
-  )
-  const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({})
+const parseRepoUrl = (url: string): RepoInfo | null => {
+  const provider = detectProvider(url)
+  if (!provider) return null
 
-  // const isActive = (path: string) => path === pathname;
-  const isActive = useCallback((path: string) => path === pathname, [ pathname ])
+  const cleanUrl = url.replace(".git", "").replace(/\/$/, "")
+  
+  try {
+    const urlObj = new URL(cleanUrl)
+    const pathParts = urlObj.pathname.split("/").filter(Boolean)
+    
+    if (pathParts.length < 1) return null
 
-  useEffect(() => {
-    // Check if the current path matches any submenu item
-    let submenuMatched = false;
-    [ "main", "others" ].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems
-      items.forEach((nav, index) => {
-        if (nav.subItems) {
-          nav.subItems.forEach((subItem) => {
-            if (isActive(subItem.path)) {
-              setOpenSubmenu({
-                type: menuType as "main" | "others",
-                index
-              })
-              submenuMatched = true
-            }
-          })
+    if (provider === "github") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: "https://api.github.com" }
+    } else if (provider === "gitlab") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: `https://${urlObj.hostname}/api/v4` }
+    } else if (provider === "bitbucket") {
+      const [owner, repo] = pathParts
+      return { owner, repo, provider, baseUrl: "https://api.bitbucket.org/2.0" }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+/* -------------------- GIT REPO FETCH -------------------- */
+
+const fetchRepoTree = async (
+    repoInfo: RepoInfo,
+    path = ""
+): Promise<RepoNode[]> => {
+  const { owner, repo, provider, baseUrl } = repoInfo
+
+  let apiUrl: string
+  let transformResponse: (data: any) => RepoNode[]
+
+  if (provider === "github") {
+    apiUrl = `${baseUrl}/repos/${owner}/${repo}/contents/${path}`
+    transformResponse = (data: any) => {
+      if (!Array.isArray(data)) data = [data]
+      return data.map((item: any) => ({
+        name: item.name,
+        path: item.path,
+        type: item.type === "dir" ? "dir" : "file",
+        download_url: item.download_url ?? undefined,
+        children: item.type === "dir" ? [] : undefined,
+        isOpen: false
+      }))
+    }
+  } else if (provider === "gitlab") {
+    const encodedPath = path ? encodeURIComponent(path) : ""
+    const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
+    apiUrl = [baseUrl, 'projects', projectSegment || null, 'repository', `tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`].filter(Boolean).join('/');
+    transformResponse = (data: any) => {
+      if (!Array.isArray(data)) data = [data]
+      return data.map((item: any) => {
+        const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
+        return ({
+          name: item.name,
+          path: item.path,
+          type: item.type === "tree" ? "dir" : "file",
+          download_url: item.type === "blob" ? `${baseUrl}/projects/${projectSegment}/repository/files/${encodeURIComponent(item.path)}/raw?ref=HEAD` : undefined,
+          children: item.type === "tree" ? [] : undefined,
+          isOpen: false
+        })
+      })
+    }
+  } else if (provider === "bitbucket") {
+    // Bitbucket API structure: /src/HEAD/{path} returns HTML, we need to use /src endpoint
+    // Note: Bitbucket API v2.0 has limitations for public repos without auth
+    // This is a simplified implementation
+    apiUrl = `${baseUrl}/repositories/${owner}/${repo}/src/HEAD/${path || ""}`
+    transformResponse = (data: any) => {
+      // Bitbucket may return different structures, handle both
+      let items: any[] = []
+      if (Array.isArray(data)) {
+        items = data
+      } else if (data && data.values && Array.isArray(data.values)) {
+        items = data.values
+      } else if (data && typeof data === "object") {
+        items = Object.keys(data).map(key => ({ name: key, ...data[key] }))
+      }
+      
+      return items.map((item: any) => {
+        const itemPath = item.path || item.name || item
+        const itemName = typeof itemPath === "string" ? itemPath.split("/").pop() || itemPath : item.name || "unknown"
+        const fullPath = path ? `${path}/${itemName}` : itemName
+        const itemType = item.type === "commit_directory" || item.type === "directory" ? "dir" : "file"
+        
+        return {
+          name: itemName,
+          path: fullPath,
+          type: itemType,
+          download_url: itemType === "file" && item.links?.self?.href ? item.links.self.href : undefined,
+          children: itemType === "dir" ? [] : undefined,
+          isOpen: false
         }
       })
-    })
-
-    // If no submenu item matches, close the open submenu
-    if (!submenuMatched) {
-      setOpenSubmenu(null)
     }
-  }, [ pathname, isActive ])
+  } else {
+    throw new Error(`Unsupported provider: ${provider}`)
+  }
 
-  useEffect(() => {
-    // Set the height of the submenu items when the submenu is opened
-    if (openSubmenu !== null) {
-      const key = `${ openSubmenu.type }-${ openSubmenu.index }`
-      if (subMenuRefs.current[key]) {
-        setSubMenuHeight((prevHeights) => ({
-          ...prevHeights,
-          [key]: subMenuRefs.current[key]?.scrollHeight || 0
-        }))
-      }
+  const res = await fetch(apiUrl)
+  if (!res.ok) {
+    throw new Error(`${provider} fetch failed: ${res.statusText}`)
+  }
+
+  const data = await res.json()
+  return transformResponse(data)
+}
+
+
+/* -------------------- FILE TREE -------------------- */
+
+const FileTree: React.FC<{
+  nodes: RepoNode[]
+  repoInfo: RepoInfo
+  level?: number
+}> = ({ nodes, repoInfo, level = 0 }) => {
+  const [tree, setTree] = useState(nodes)
+  const { parseFiles } = useDashboard()
+
+  const toggleFolder = async (index: number) => {
+    const node = tree[index]
+
+    if (!node.isOpen && node.children?.length === 0) {
+      const children = await fetchRepoTree(repoInfo, node.path)
+      node.children = children
     }
-  }, [ openSubmenu ])
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
-    setOpenSubmenu((prevOpenSubmenu) => {
-      if (
-        prevOpenSubmenu &&
-        prevOpenSubmenu.type === menuType &&
-        prevOpenSubmenu.index === index
-      ) {
-        return null
-      }
-      return {type: menuType, index}
+    setTree(prev =>
+        prev.map((n, i) =>
+            i === index ? { ...n, isOpen: !n.isOpen } : n
+        )
+    )
+  }
+
+  const gitFileToFile = async (node: RepoNode): Promise<File> => {
+    if (!node.download_url) {
+      throw new Error("No download URL for file")
+    }
+
+    const response = await fetch(node.download_url)
+    const blob = await response.blob()
+
+    return new File([blob], node.name, {
+      type: blob.type || "text/plain"
     })
+  }
+
+  const selectNode = async (node: RepoNode) => {
+    if (node.type !== "file") return
+    const file = await gitFileToFile(node)
+    await parseFiles([file])
   }
 
   return (
-    <aside
-      className={ `fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-50 border-r border-gray-200 
-        ${
-        isExpanded || isMobileOpen
-          ? "w-[290px]"
-          : isHovered
-            ? "w-[290px]"
-            : "w-[90px]"
-      }
-        ${ isMobileOpen ? "translate-x-0" : "-translate-x-full" }
-        lg:translate-x-0` }
-      onMouseEnter={ () => !isExpanded && setIsHovered(false) }
-      onMouseLeave={ () => setIsHovered(false) }
-    >
-      <div
-        className={ `py-8 flex  ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }` }
-      >
-        <Link href="/">
-          { isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={ 100 }
-                height={ 40 }
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={ 100 }
-                height={ 40 }
-              />
-            </>
-          ) : (
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={ 32 }
-              height={ 32 }
-            />
-          ) }
-        </Link>
-      </div>
-      <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-        <nav className="mb-6">
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={ `mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }` }
-              >
-                { isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <Minus/>
-                ) }
-              </h2>
-              { renderMenuItems(navItems, "main") }
-            </div>
+      <ul className="space-y-1">
+        {tree.map((node, i) => (
+            <li key={node.path} style={{ paddingLeft: level * 12 }}>
+              {node.type === "dir" ? (
+                  <>
+                    <button
+                        onClick={() => toggleFolder(i)}
+                        className="flex items-center gap-2 text-sm text-gray-600 dark:text-white cursor-pointer hover:text-brand-500 dark:hover:text-brand-300"
+                    >
+                      <ChevronDownIcon
+                          className={`w-4 h-4 transition ${
+                              node.isOpen ? "rotate-180" : ""
+                          }`}
+                      />
+                      <Folder className={'fill-brand-200'} width={'15px'}/> {node.name}
+                    </button>
 
-            <div className="">
-              <h2
-                className={ `mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }` }
-              >
-                { isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <Minus/>
-                ) }
-              </h2>
-              { renderMenuItems(othersItems, "others") }
-            </div>
+                    {node.isOpen && node.children && (
+                        <FileTree
+                            nodes={node.children}
+                            repoInfo={repoInfo}
+                            level={level + 1}
+                        />
+                    )}
+                  </>
+              ) : (
+                  <div
+                      className="flex items-center gap-2 text-sm text-gray-600 dark:text-white cursor-pointer hover:text-brand-500 dark:hover:text-brand-300"
+                      onClick={() => selectNode(node)}
+                  >
+                    <FileIcon width={'15px'}/> {node.name}
+                  </div>
+              )}
+            </li>
+        ))}
+      </ul>
+  )
+}
+
+/* -------------------- SIDEBAR -------------------- */
+
+const clearRepository = (
+  setRepoUrl: (v: string) => void,
+  setRepoTree: (v: RepoNode[]) => void,
+  setRepoInfo: (v: RepoInfo | null) => void
+) => {
+  localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
+  setRepoUrl("")
+  setRepoTree([])
+  setRepoInfo(null)
+}
+
+const AppSidebar: React.FC = () => {
+  const { isExpanded, isHovered, setIsHovered, toggleSidebar, toggleMobileSidebar } = useSidebar()
+  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null)
+  const [repoUrl, setRepoUrl] = useState("")
+  const [repoTree, setRepoTree] = useState<RepoNode[]>([])
+  const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null)
+  const [loadingRepo, setLoadingRepo] = useState(false)
+
+  useEffect(() => {
+    const savedRepoUrl = localStorage.getItem(LOCAL_STORAGE_REPO_KEY)
+    if (!savedRepoUrl) return
+
+    const parsed = parseRepoUrl(savedRepoUrl)
+    if (!parsed) return
+
+    const loadSavedRepo = async () => {
+      try {
+        setLoadingRepo(true)
+
+        const tree = await fetchRepoTree(parsed)
+
+        setRepoUrl(savedRepoUrl)
+        setRepoTree(tree)
+        setRepoInfo(parsed)
+      } catch (e) {
+        console.warn("Failed to restore saved repo", e)
+        localStorage.removeItem(LOCAL_STORAGE_REPO_KEY)
+      } finally {
+        setLoadingRepo(false)
+      }
+    }
+
+    loadSavedRepo().then()
+  }, [])
+
+  const handleRefreshRepo = async () => {
+    if (!repoInfo) return
+
+    try {
+      setLoadingRepo(true)
+      const tree = await fetchRepoTree(repoInfo)
+      setRepoTree(tree)
+    } catch (e) {
+      console.error("Failed to refresh repository", e)
+      alert("Failed to refresh repository")
+    } finally {
+      setLoadingRepo(false)
+    }
+  }
+
+  const handleAddRepo = async () => {
+    try {
+      setLoadingRepo(true)
+
+      const parsed = parseRepoUrl(repoUrl)
+      if (!parsed) throw new Error("Invalid repo URL. Supported providers: GitHub, GitLab, Bitbucket")
+
+      const tree = await fetchRepoTree(parsed)
+
+      setRepoTree(tree)
+      setRepoInfo(parsed)
+
+      // ✅ SAVE TO LOCAL STORAGE
+      localStorage.setItem(LOCAL_STORAGE_REPO_KEY, repoUrl)
+    } catch (e) {
+      console.error(e)
+      alert("Failed to load repository")
+    } finally {
+      setLoadingRepo(false)
+    }
+  }
+
+  return (
+      <aside className={`flex h-full bg-white dark:bg-gray-900 border-r dark:border-gray-700 mb-32 transition-all
+      ${isExpanded || isHovered ? "w-[290px]" : "w-[60px]"}`}
+          onMouseEnter={() => !isExpanded && setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+      >
+        <nav className="p-5 space-y-4 w-full">
+          <Pin width={'15px'}  className={cn('cursor-pointer dark:text-white', isExpanded && 'fill-black dark:fill-white')} onClick={() => window.innerWidth >= 1024 ? toggleSidebar() : toggleMobileSidebar() }/>
+          {/* DASHBOARD */}
+          <div className={'flex justify-between w-full text-black dark:text-white'}>
+            <button onClick={() => setOpenSubmenu(openSubmenu === 0 ? null : 0)} className="flex items-center gap-3 text-sm font-medium">
+              {/*<LayoutTemplate />*/}
+              {(isExpanded || isHovered) && "Presets"}
+              <ChevronDownIcon className={`ml-auto w-4 h-4 transition ${ openSubmenu === 0 ? "rotate-180" : "" }`}/>
+            </button>
+
+            {repoInfo && (isExpanded || isHovered) && (
+              <div className="flex gap-2">
+                <RefreshCcw onClick={() => loadingRepo && handleRefreshRepo() }
+                            className="flex-1 py-1 text-xs hover:bg-gray-100 disabled:opacity-50"
+                />
+              </div>
+            )}
           </div>
+
+          {openSubmenu === 0 && (isExpanded || isHovered) && (
+            <div className="ml-6 space-y-3">
+              <div className={'flex gap-2 items-center align-middle justify-between'}>
+                <input
+                  value={repoUrl}
+                  onChange={e => setRepoUrl(e.target.value)}
+                  placeholder="https://github.com/user/repo"
+                  disabled={!!repoInfo}
+                  className="w-full px-2 py-1 text-sm text-black dark:text-white border dark:border-gray-700 rounded disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                />
+                <Trash onClick={() =>
+                    clearRepository(setRepoUrl, setRepoTree, setRepoInfo)
+                  }
+                  className="flex p-1 text-xs text-red-500 hover:fill-red-600 cursor-pointer"
+                >
+                </Trash>
+              </div>
+
+              { !repoInfo && (
+                <button
+                  onClick={handleAddRepo}
+                  className="w-full py-1 text-sm bg-brand-500 text-white rounded"
+                >
+                  {loadingRepo ? "Loading..." : "Add Repository"}
+                </button>
+              )}
+
+              {repoTree.length > 0 && repoInfo && (
+                <FileTree
+                  nodes={repoTree}
+                  repoInfo={repoInfo}
+                />
+              )}
+            </div>
+          )}
+
+          {/* OTHERS */}
+          {othersItems.map(item => (
+            <div key={item.name}>
+            <span className="flex items-center gap-3 text-sm">
+              {/*{item.icon}*/}
+              {(isExpanded || isHovered) && item.name}
+            </span>
+              </div>
+          ))}
         </nav>
-      </div>
-    </aside>
+      </aside>
   )
 }
 

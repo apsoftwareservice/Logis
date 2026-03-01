@@ -149,9 +149,19 @@ const server = createServer(async (req, res) => {
             }
 
             const stream = state.tokenToStream.get(tokenHash);
+            let parsedBody = {};
+            if (body) {
+                try {
+                    parsedBody = JSON.parse(body);
+                } catch (parseError) {
+                    res.writeHead(400);
+                    res.end(JSON.stringify({ error: "Invalid JSON in request body" }));
+                    return;
+                }
+            }
             const payload = JSON.stringify({
                 type: "log",
-                data: body ? JSON.parse(body) : {},
+                data: parsedBody,
             });
             console.log(payload);
 

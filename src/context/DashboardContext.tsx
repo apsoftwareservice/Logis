@@ -1,5 +1,5 @@
 "use client"
-import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState } from "react"
+import React, { createContext, RefObject, useCallback, useContext, useEffect, useRef, useState, startTransition } from "react"
 import { EventTypeIndex, LogEvent, Observer, TimelineEngine } from '@/core/engine'
 import { detectFileFormat, InputType, isNewEvent } from '@/core/utils'
 import { InputSource } from '@/core/sources/InputSource'
@@ -55,6 +55,8 @@ type DashboardContextType = {
 
   searchValues: Option[]
   setSearchValues: React.Dispatch<React.SetStateAction<Option[]>>
+
+  resetLogs: () => void
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -406,6 +408,41 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
+  function resetLogs() {
+    // Stop engine if running
+    if (engine.current?.source) {
+      engine.current.source.stop?.()
+    }
+    
+    // Use startTransition to batch all state updates and prevent hydration mismatches
+    startTransition(() => {
+      // Clear logs and reset state
+      setLogs([])
+      
+      // Reset cached keys
+      cachedDateKey.current = ''
+      cachedMessageKey.current = ''
+      
+      // Set index and engine to null (this affects conditional rendering)
+      index.current = null
+      engine.current = null
+      
+      // Reset timeline state
+      setTimeframe(undefined)
+      setCurrentTimestamp(0)
+      setFollowLogs(false)
+      
+      // Clear markers and clips (these are log-related)
+      setMarkers([])
+      setClips([])
+      
+      // Clear search values
+      setSearchValues([])
+      
+      toast.success('Logs reset successfully')
+    })
+  }
+
   return (
     <DashboardContext.Provider
       value={ {
@@ -437,7 +474,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setSearchValues,
         searchValues,
         setLogs,
-        isRegisteredObserver
+        isRegisteredObserver,
+        resetLogs
       } }
     >
       { children }

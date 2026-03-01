@@ -15,6 +15,7 @@ import cat from '@lottie/cat.json'
 import LoggerView from '@/components/dashboard/Containers/LoggerView'
 import { EventView } from '@/components/dashboard/Containers/EventView'
 import { StatefulEventView } from '@/components/dashboard/Containers/StatefulEventView'
+import { ActionView } from '@/components/dashboard/Containers/ActionView'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -94,6 +95,13 @@ export default function Dashboard() {
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       <LoggerView container={ container }/>
+                    </div>
+                  )
+                case ContainerType.action:
+                  return (
+                    <div key={ container.id } data-grid={ container.gridLayout }>
+                      {/* @ts-expect-error ignore */ }
+                      <ActionView container={ container }/>
                     </div>
                   )
                 default:
