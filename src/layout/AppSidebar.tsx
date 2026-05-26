@@ -37,6 +37,8 @@ type RepoInfo = {
   repo: string
   provider: GitProvider
   baseUrl?: string
+  gitlabProjectId?: string
+  gitlabProjectPath?: string
 }
 
 /* -------------------- NAV ITEMS -------------------- */
@@ -93,8 +95,19 @@ const parseRepoUrl = (url: string): RepoInfo | null => {
       const [owner, repo] = pathParts
       return { owner, repo, provider, baseUrl: "https://api.github.com" }
     } else if (provider === "gitlab") {
-      const [owner, repo] = pathParts
-      return { owner, repo, provider, baseUrl: `https://${urlObj.hostname}/api/v4` }
+      const apiProjectMatch = urlObj.pathname.match(/^\/api\/v\d+\/projects\/([^/]+)/)
+      const baseUrl = `https://${urlObj.hostname}/api/v4`
+
+      if (apiProjectMatch?.[1]) {
+        const gitlabProjectId = decodeURIComponent(apiProjectMatch[1])
+        return { owner: gitlabProjectId, repo: "", provider, baseUrl, gitlabProjectId }
+      }
+
+      const gitlabProjectPath = pathParts.map(part => decodeURIComponent(part)).join("/")
+      const owner = pathParts.slice(0, -1).map(part => decodeURIComponent(part)).join("/")
+      const repo = decodeURIComponent(pathParts[pathParts.length - 1] || "")
+
+      return { owner, repo, provider, baseUrl, gitlabProjectPath }
     } else if (provider === "bitbucket") {
       const [owner, repo] = pathParts
       return { owner, repo, provider, baseUrl: "https://api.bitbucket.org/2.0" }
@@ -131,22 +144,24 @@ const fetchRepoTree = async (
       }))
     }
   } else if (provider === "gitlab") {
-    const encodedPath = path ? encodeURIComponent(path) : ""
-    const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
-    apiUrl = [baseUrl, 'projects', projectSegment || null, 'repository', `tree?recursive=false${encodedPath ? `&path=${encodedPath}` : ""}`].filter(Boolean).join('/');
+    const projectIdentifier = repoInfo.gitlabProjectId || repoInfo.gitlabProjectPath || (owner && repo ? `${owner}/${repo}` : owner || repo)
+    const projectSegment = encodeURIComponent(projectIdentifier)
+    const query = new URLSearchParams({ recursive: "false" })
+    if (path) query.set("path", path)
+
+    apiUrl = `${baseUrl}/projects/${projectSegment}/repository/tree?${query.toString()}`
     transformResponse = (data: any) => {
       if (!Array.isArray(data)) data = [data]
-      return data.map((item: any) => {
-        const projectSegment = owner && repo ? encodeURIComponent(`${owner}/${repo}`) : encodeURIComponent(owner || repo || '');
-        return ({
+      return data.map((item: any) => (
+        {
           name: item.name,
           path: item.path,
           type: item.type === "tree" ? "dir" : "file",
           download_url: item.type === "blob" ? `${baseUrl}/projects/${projectSegment}/repository/files/${encodeURIComponent(item.path)}/raw?ref=HEAD` : undefined,
           children: item.type === "tree" ? [] : undefined,
           isOpen: false
-        })
-      })
+        }
+      ))
     }
   } else if (provider === "bitbucket") {
     // Bitbucket API structure: /src/HEAD/{path} returns HTML, we need to use /src endpoint
