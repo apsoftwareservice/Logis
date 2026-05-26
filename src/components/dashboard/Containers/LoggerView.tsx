@@ -11,6 +11,10 @@ export default function LoggerView({container}: { container: DashboardContainer<
   const {logs, followLogs} = useDashboard()
 
   const inferredColumns: ColumnDef<object, any>[] = useMemo(() => {
+    if (!logs || logs.length === 0) {
+      return []
+    }
+
     const keys = Object.keys(logs[0]) as (keyof LogsModel)[]
 
     return keys.map(k => ({

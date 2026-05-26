@@ -21,7 +21,7 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
     registerObserver(eventObserver(container.data.startEvent, index.current!))
     registerObserver(eventObserver(container.data.stopEvent, index.current!))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ container ]);
+  }, [ container, index?.current ]);
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: randomUUID(),
