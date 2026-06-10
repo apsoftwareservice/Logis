@@ -141,6 +141,38 @@ So “live session” in the UI means: the frontend opens the SSE stream for its
 
 ---
 
+## 7. Live Session Actions
+
+The UI has four distinct actions that affect live data and workspace state:
+
+1. **Reset logs button**
+   - Keeps the current session ID.
+   - Clears the live runtime data only: logs, index, cached keys, markers, clips, and timeline state.
+   - Keeps the current containers and their layout.
+   - Reopens the same live session so the existing dashboard can continue on fresh data.
+
+2. **Reset all (workspace) button**
+   - Clears the live runtime data and the dashboard workspace.
+   - Removes the session ID.
+   - Removes all containers and resets the layout back to the initial empty state.
+
+3. **Page Refresh**
+   - Keeps the current workspace and session wiring as-is for now.
+   - This is the existing behavior and may change in a future update.
+
+4. **Start with a different custom session ID**
+   - Switches the live source to a new session ID.
+   - Keeps the current containers and layout.
+   - Clears the previous live runtime data so the dashboard can bind to the new stream as a fresh dataset.
+
+In short:
+- `Reset logs` = same session, fresh data
+- `Reset all` = fresh workspace, no session
+- `Page Refresh` = current behavior, unchanged
+- `Different session ID` = new session, same dashboard
+
+---
+
 ## Summary
 
 - **Events** are JSON objects with discovered **date** and **message/type** keys.
