@@ -92,7 +92,13 @@ export default function LiveSession() {
                                     Start Live Session
                                 </button>
 
-                                <div className="flex flex-col gap-2">
+                                <form
+                                    className="flex flex-col gap-2"
+                                    onSubmit={(e) => {
+                                        e.preventDefault()
+                                        handleCustomId()
+                                    }}
+                                >
                                     <input
                                         type="text"
                                         value={customId}
@@ -101,12 +107,12 @@ export default function LiveSession() {
                                         className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 bg-transparent text-gray-800 dark:text-gray-200"
                                     />
                                     <button
-                                        onClick={handleCustomId}
+                                        type="submit"
                                         className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 rounded-lg transition"
                                     >
                                         Start with Custom ID
                                     </button>
-                                </div>
+                                </form>
                             </div>
                         </motion.div>
                     </motion.div>
