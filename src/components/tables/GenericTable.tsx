@@ -23,7 +23,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Cog } from 'lucide-react'
+import { Check, Cog } from 'lucide-react'
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DashboardContainer } from '@/types/containers'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
@@ -347,7 +347,8 @@ export default function GenericTable<TData extends Record<string, any>>({
                     className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                     onClick={() => setBeautifyJSON(v => !v)}
                 >
-                  Beautify JSON
+                  <span className="flex-1">Beautify JSON</span>
+                  {beautifyJSON ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
                 </div>
                 <div
                     className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}

@@ -100,7 +100,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   const pendingTsRef = useRef<number | null>(null)
   const scheduledRef = useRef(false)
-  const containersRef = useRef<DashboardContainer<object>[]>([])
+  const autoStartedSessionRef = useRef<string | null>(null)
 
   const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000` : '';
 
@@ -164,6 +164,15 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       }
       setFollowLogs(false)
     }
+  }
+
+  function getSessionIdFromUrl(): string | null {
+    if (typeof window === 'undefined') {
+      return null
+    }
+
+    const querySessionId = new URLSearchParams(window.location.search).get('session_id')
+    return querySessionId?.trim() || null
   }
 
   const handleFirstEventParsing = useCallback((events: LogEvent[], shouldBootstrapDefaultLogger = false) => {
@@ -256,6 +265,17 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       source.stop?.()
     })
   }
+
+  useEffect(() => {
+    const sessionIdFromUrl = getSessionIdFromUrl()
+    if (!sessionIdFromUrl || autoStartedSessionRef.current === sessionIdFromUrl) {
+      return
+    }
+
+    autoStartedSessionRef.current = sessionIdFromUrl
+    setSessionId(sessionIdFromUrl)
+    handleLiveSessionStateChange(true, sessionIdFromUrl)
+  }, [])
 
   useEffect(() => {
     const tempMarkers: Marker[] = []
