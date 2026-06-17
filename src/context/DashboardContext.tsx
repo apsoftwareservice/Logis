@@ -101,7 +101,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const pendingTsRef = useRef<number | null>(null)
   const scheduledRef = useRef(false)
   const autoStartedSessionRef = useRef<string | null>(null)
-
+  const containersRef = useRef<DashboardContainer<object>[]>([])
   const baseUrl = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:4000` : '';
 
   const requestSeek = useCallback((timestamp: number) => {

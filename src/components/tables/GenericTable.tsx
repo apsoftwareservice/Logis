@@ -14,8 +14,8 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useImpera
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   closestCenter,
+  type DragEndEvent,
   DndContext,
-  DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -28,6 +28,130 @@ import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DashboardContainer } from '@/types/containers'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
 import { useDashboard } from '@/context/DashboardContext'
+
+const DEFAULT_AUTO_FIT_ENABLED = false
+const MANUAL_MODE_SAMPLE_ROWS = 10
+// Keep very short columns usable for headers, sort markers, and resize affordances.
+const AUTO_FIT_MIN_WIDTH = 100
+// Prevent a single row causing a column to be too wide
+const AUTO_FIT_MAX_WIDTH = 1000
+// Approximate average monospace character width in pixels for table content.
+const AUTO_FIT_CHAR_WIDTH = 8
+// Extra room for cell padding and table controls so content is not edge-to-edge.
+const AUTO_FIT_CELL_PADDING = 48
+
+// Keep the width within the table's supported minimum and maximum bounds.
+function boundAutoFitWidth(width: number) {
+  return Math.min(
+    AUTO_FIT_MAX_WIDTH,
+    Math.max(AUTO_FIT_MIN_WIDTH, width)
+  )
+}
+
+// Convert a cell value into the text form that the table will roughly display.
+function stringifyCellValue(value: unknown, beautifyJSON = false): string {
+  if (value == null) {
+    return ''
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (typeof value === 'object') {
+    try {
+      return beautifyJSON ? JSON.stringify(value, null, 2) : JSON.stringify(value)
+    } catch {
+      // Some objects cannot be JSON-stringified, such as circular structures.
+      // Fall back to a plain string so auto-fit remains safe instead of crashing.
+      return String(value)
+    }
+  }
+
+  return String(value)
+}
+
+// Find the longest visible line in a possibly multi-line string.
+function getLongestLineLength(text: string) {
+  return text
+    .split('\n')
+    .reduce((longest, line) => Math.max(longest, line.length), 0)
+}
+
+// Read the stable id used for sizing, persistence, and row lookups from a column definition.
+// We use the same id for both the header label fallback and the row value lookup.
+function getColumnId<TData extends Record<string, any>>(column: ColumnDef<TData, any>) {
+  return (
+    ((column as any).accessorKey as string) ||
+    ((column as any).id as string)
+  )
+}
+
+// Estimate a column width from two sources:
+// 1. the header text, because the header itself must fit
+// 2. the longest value in the current dataset for that column
+function estimateColumnWidth<TData extends Record<string, any>>(
+  column: ColumnDef<TData, any>,
+  rows: TData[],
+  beautifyJSON = false
+) {
+  const columnId = getColumnId(column)
+  if (!columnId) {
+    return AUTO_FIT_MIN_WIDTH
+  }
+
+  const headerText = String((column as any).header || columnId)
+  let longest = getLongestLineLength(headerText)
+
+  for (let i = 0; i < rows.length; i++) {
+    const value = rows[i]?.[columnId]
+    longest = Math.max(longest, getLongestLineLength(stringifyCellValue(value, beautifyJSON)))
+  }
+
+  return boundAutoFitWidth(
+    longest * AUTO_FIT_CHAR_WIDTH + AUTO_FIT_CELL_PADDING
+  )
+}
+
+// Compute the width map that auto-fit mode should apply to every column right now.
+function computeAutoFitColumnSizes<TData extends Record<string, any>>(
+  columns: ColumnDef<TData, any>[],
+  rows: TData[],
+  beautifyJSON: boolean
+) {
+  return Object.fromEntries(
+    columns
+      .map((column: any) => {
+        const columnId = getColumnId(column)
+        if (!columnId) return null
+        return [ columnId, estimateColumnWidth(column, rows, beautifyJSON) ]
+      })
+      .filter(Boolean) as Array<[string, number]>
+  )
+}
+
+// Seed manual mode with a one-time best guess from the first few rows.
+// This is intentionally lighter than auto-fit mode:
+// it gives manual mode a sensible starting width, but it does not keep updating afterward.
+function computeManualModeStartingSizes<TData extends Record<string, any>>(
+  columns: ColumnDef<TData, any>[],
+  rows: TData[],
+  beautifyJSON: boolean
+) {
+  return computeAutoFitColumnSizes(
+    columns,
+    rows.slice(0, MANUAL_MODE_SAMPLE_ROWS),
+    beautifyJSON
+  )
+}
+
+// Avoid unnecessary state updates when the computed auto-fit widths already match the current ones.
+function haveSameSizes(a: Record<string, number>, b: Record<string, number>) {
+  return (
+    Object.keys(a).length === Object.keys(b).length &&
+    Object.entries(a).every(([ key, width ]) => b[key] === width)
+  )
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // localStorage helper (safe on SSR and JSON-guarded)
@@ -56,7 +180,7 @@ const storage = {
 // ──────────────────────────────────────────────────────────────────────────────
 // Sortable header cell
 // ──────────────────────────────────────────────────────────────────────────────
-const SortableHeader = ({ header, table }: any) => {
+const SortableHeader = ({ header, table, autoFitEnabled }: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })
 
   const style = {
@@ -116,14 +240,16 @@ const SortableHeader = ({ header, table }: any) => {
         )}
 
         <div
-            onMouseDown={header.getResizeHandler()}
-            onTouchStart={header.getResizeHandler()}
-            className="absolute right-0 top-2 h-full w-3 cursor-col-resize select-none"
+            onMouseDown={autoFitEnabled ? undefined : header.getResizeHandler()}
+            onTouchStart={autoFitEnabled ? undefined : header.getResizeHandler()}
+            className={`absolute right-0 top-2 h-full w-3 select-none ${autoFitEnabled ? 'cursor-not-allowed opacity-40' : 'cursor-col-resize'}`}
         >
           <div
               className={
                   `mx-auto h-[70%] w-0.5 rounded-full transition-colors duration-150 ` +
-                  (header.column.getIsResizing()
+                  (autoFitEnabled
+                      ? "bg-gray-200 dark:bg-gray-700"
+                      : header.column.getIsResizing()
                       ? "bg-gradient-to-b from-indigo-400 via-sky-500 to-cyan-400"
                       : "bg-gray-300 dark:bg-gray-600 group-hover:bg-gradient-to-b group-hover:from-indigo-300 group-hover:via-sky-400 group-hover:to-cyan-300 dark:group-hover:from-indigo-400 dark:group-hover:via-sky-500 dark:group-hover:to-cyan-400")
               }
@@ -212,6 +338,9 @@ export default function GenericTable<TData extends Record<string, any>>({
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
       () => storage.get<Record<string, number>>(`${tableKey}:sizes`, {})
   )
+  const [autoFitEnabled, setAutoFitEnabled] = useState<boolean>(
+      () => storage.get<boolean>(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
+  )
 
   const parentRef = useRef<HTMLDivElement>(null)
 
@@ -260,6 +389,52 @@ export default function GenericTable<TData extends Record<string, any>>({
       return next
     })
   }, [columnsProp, beautifyJSON, tableKey])
+
+  // Auto-fit mode: while enabled, widths always follow the longest value in the dataset (max width: AUTO_FIT_MAX_WIDTH)
+  useEffect(() => {
+    if (!autoFitEnabled || !columnsProp.length) {
+      return
+    }
+
+    const nextAutoSizes = computeAutoFitColumnSizes(
+      columnsProp,
+      data ?? [],
+      beautifyJSON
+    )
+
+    setColumnSizing(prev => {
+      if (haveSameSizes(prev, nextAutoSizes)) {
+        return prev
+      }
+      storage.set(`${tableKey}:sizes`, nextAutoSizes)
+      return nextAutoSizes
+    })
+  }, [autoFitEnabled, beautifyJSON, columnsProp, data, tableKey])
+
+  // Manual mode still gets a small one-time sizing pass from the first few rows
+  // so it does not start with unusably narrow columns on a fresh table.
+  useEffect(() => {
+    if (autoFitEnabled || !columnsProp.length) {
+      return
+    }
+
+    const nextManualSizes = computeManualModeStartingSizes(
+      columnsProp,
+      data ?? [],
+      beautifyJSON
+    )
+
+    setColumnSizing(prev => {
+      const merged = { ...nextManualSizes, ...prev }
+
+      if (haveSameSizes(prev, merged)) {
+        return prev
+      }
+
+      storage.set(`${tableKey}:sizes`, merged)
+      return merged
+    })
+  }, [autoFitEnabled, beautifyJSON, columnsProp, data, tableKey])
 
   const table = useReactTable({
     data: data ?? [],
@@ -315,6 +490,7 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:beautify`, beautifyJSON) }, [tableKey, beautifyJSON])
   useEffect(() => { storage.set(`${tableKey}:order`, columnOrder) }, [tableKey, columnOrder])
   useEffect(() => { storage.set(`${tableKey}:sizes`, columnSizing) }, [tableKey, columnSizing])
+  useEffect(() => { storage.set(`${tableKey}:autoFit`, autoFitEnabled) }, [autoFitEnabled, tableKey])
 
   useEffect(() => {
     if (!followLogs) return
@@ -335,35 +511,44 @@ export default function GenericTable<TData extends Record<string, any>>({
               <Dropdown
                   isOpen={isDropdownOpen}
                   onClose={() => setIsDropdownOpen(false)}
-                  className="w-40 p-2"
+                  className="w-50 p-2"
               >
                 <div
-                    className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                     onClick={() => setShowFilter(!showFilter)}
                 >
                   Use Filter
                 </div>
                 <div
-                    className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                     onClick={() => setBeautifyJSON(v => !v)}
                 >
                   <span className="flex-1">Beautify JSON</span>
                   {beautifyJSON ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
                 </div>
                 <div
-                    className={'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
+                    onClick={() => setAutoFitEnabled(value => !value)}
+                >
+                  <span className="flex-1 whitespace-nowrap">Auto-Fit Columns</span>
+                  {autoFitEnabled ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
+                </div>
+                <div
+                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                     onClick={() => {
                       setColumnFilters([])
                       setBeautifyJSON(false)
                       setShowFilter(false)
                       setSorting([])
                       setColumnSizing({})
+                      setAutoFitEnabled(DEFAULT_AUTO_FIT_ENABLED)
                       // clear persisted state
                       storage.set(`${tableKey}:filters`, [])
                       storage.set(`${tableKey}:beautify`, false)
                       storage.set(`${tableKey}:showFilter`, false)
                       storage.set(`${tableKey}:sorting`, [])
                       storage.set(`${tableKey}:sizes`, {})
+                      storage.set(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
                     }}
                 >
                   Reset
@@ -398,7 +583,7 @@ export default function GenericTable<TData extends Record<string, any>>({
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                       {table.getHeaderGroups().map(headerGroup => (
                           headerGroup.headers.map((header) => (
-                              <SortableHeader key={header.id} header={header} table={table} />
+                              <SortableHeader key={header.id} header={header} table={table} autoFitEnabled={autoFitEnabled} />
                           ))
                       ))}
                       <div className="flex-1"/>

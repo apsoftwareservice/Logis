@@ -53,9 +53,9 @@ export default function Dashboard() {
                 case ContainerType.graph:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
-                      {/* @ts-expect-error ignore*/ }
                       {/* Keep the grid item key stable for layout persistence, but remount the
                           inner view after reset so its local UI state is cleared. */}
+                      {/* @ts-expect-error ignore*/ }
                       <GraphView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
