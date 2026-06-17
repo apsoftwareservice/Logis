@@ -84,12 +84,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const [ containerRenderKey, setContainerRenderKey ] = useState(() => randomUUID())
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
-  const [ clips, setClips ] = useState<Clip[]>([]
-    // { id: "A", start: 0, end: 22.5, track: 0, label: "Intro", color: "#fde68a" },
-    // { id: "B", start: 10, end: 42, track: 1, label: "Interview", color: "#bbf7d0" },
-    // { id: "C", start: 44, end: 70, track: 0, label: "B-Roll", color: "#bfdbfe" },
-    // { id: "D", start: 80, end: 110, track: 1, label: "Overlay", color: "#fecaca" }]
-  )
+  const [ clips, setClips ] = useState<Clip[]>([])
   const [ markers, setMarkers ] = useState<Marker[]>([])
   const cachedDateKey = useRef<string>('')
   const cachedMessageKey = useRef<string>('')
@@ -135,35 +130,128 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     return res.json()
   }
 
+  // Stop the current runtime data stream while optionally keeping the current session id.
+  function clearRuntimeState({
+    removeContainers = false,
+    clearSession = false,
+  }: {
+    removeContainers?: boolean
+    clearSession?: boolean
+  } = {}) {
+    if (engine.current?.source) {
+      engine.current.source.stop?.()
+    }
+
+    // Use startTransition to batch all state updates and prevent hydration mismatches
+    startTransition(() => {
+      // Clear logs and reset state
+      setLogs([])
+
+      // Reset cached keys
+      cachedDateKey.current = ''
+      cachedMessageKey.current = ''
+
+      // Set index and engine to null (this affects conditional rendering)
+      index.current = null
+      engine.current = null
+
+      // Reset timeline state
+      setTimeframe(undefined)
+      setCurrentTimestamp(0)
+      setFollowLogs(false)
+
+      // Clear markers and clips (these are log-related)
+      setMarkers([])
+      setClips([])
+
+      // Clear search values
+      setSearchValues([])
+
+      if (removeContainers) {
+        setContainers([])
+        setLockGrid(true)
+      }
+
+      if (clearSession) {
+        setSessionId(undefined)
+        setIsLiveSession(false)
+      }
+    })
+  }
+
+  async function startLiveSession(sessionKey: string) {
+    clearRuntimeState()
+
+    // Keep the dashboard shell and only swap the live data source.
+    setContainerRenderKey(randomUUID())
+    setTimeframe({ start: 0, end: 0 })
+
+    try {
+      const { token } = await registerLiveSession(sessionKey)
+      setSessionId(sessionKey)
+      await startEngineWithSource(
+        createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/stream?token=${ token }`)
+      )
+    } catch (e: any) {
+      toast.error(`${ e }`)
+      setIsLiveSession(false)
+    }
+  }
+
   async function handleLiveSessionStateChange(state: boolean, customId?: string) {
     if (engine.current && engine.current?.source.type !== InputType.stream) {
       toast.error('Refresh the page and start with Live Session')
       return
     }
 
-    setIsLiveSession(state)
-
-    if (state) {
-      if (engine.current) {
-        engine.current.source.start(handleSourceEvents)
-      } else {
-        setTimeframe({start: 0, end: 0})
-        try {
-          const {token, reused} = await registerLiveSession(customId ?? sessionId ?? randomUUID())
-          setSessionId(customId ?? token)
-          await startEngineWithSource(createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/stream?token=${ token }`))
-        } catch (e: any) {
-          toast.error(`${ e }`)
-          setIsLiveSession(false)
-        }
-      }
-    } else {
+    if (!state) {
+      setIsLiveSession(false)
       if (engine.current?.source) {
         engine.current.source.stop?.()
         toast.info('Live Session Stopped')
       }
       setFollowLogs(false)
+      return
     }
+
+    const trimmedId = customId?.trim()
+    const nextSessionId = trimmedId || sessionId || randomUUID()
+    setIsLiveSession(true)
+
+    // If the caller supplied a custom ID, treat it as a fresh live source.
+    if (trimmedId || !engine.current) {
+      await startLiveSession(nextSessionId)
+      return
+    }
+
+    // No custom id and a live source already exists: reconnect to the same stream.
+    engine.current.source.start(handleSourceEvents)
+  }
+
+  function appendNewEventsFromSource(source: InputSource) {
+    source.start((events) => {
+      if (!events || events.length <= 0) {
+        toast.error('No logs found')
+        source.stop?.()
+        return
+      }
+
+      const {dateKey, messageKey} = discoverKeys(events[0])
+
+      if (dateKey !== cachedDateKey.current || messageKey !== cachedMessageKey.current) {
+        toast.error(`The date key "${ dateKey }" mast match the already existing key "${ cachedDateKey }", same for the message key`)
+        source.stop?.()
+        return
+      }
+
+      index.current?.appendAndSort(events, cachedDateKey.current, cachedMessageKey.current)
+      setLogs(prev => {
+        const newEvents: LogEvent[] = events.filter(event => isNewEvent(event, dateKey, messageKey, index.current))
+        return prev.concat(newEvents)
+      })
+
+      source.stop?.()
+    })
   }
 
   function getSessionIdFromUrl(): string | null {
@@ -239,32 +327,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     setFollowLogs(source.type === InputType.stream)
     engine.current.source.start(handleSourceEvents)
   }, [ handleSourceEvents ])
-
-  function appendNewEventsFromSource(source: InputSource) {
-    source.start((events) => {
-      if (!events || events.length <= 0) {
-        toast.error('No logs found')
-        source.stop?.()
-        return
-      }
-
-      const {dateKey, messageKey} = discoverKeys(events[0])
-
-      if (dateKey !== cachedDateKey.current || messageKey !== cachedMessageKey.current) {
-        toast.error(`The date key "${ dateKey }" mast match the already existing key "${ cachedDateKey }", same for the message key`)
-        source.stop?.()
-        return
-      }
-
-      index.current?.appendAndSort(events, cachedDateKey.current, cachedMessageKey.current)
-      setLogs(prev => {
-        const newEvents: LogEvent[] = events.filter(event => isNewEvent(event, dateKey, messageKey, index.current))
-        return prev.concat(newEvents)
-      })
-
-      source.stop?.()
-    })
-  }
 
   useEffect(() => {
     const sessionIdFromUrl = getSessionIdFromUrl()
@@ -443,54 +505,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
-  function clearRuntimeState({
-    removeContainers = false,
-    clearSession = false,
-  }: {
-    removeContainers?: boolean
-    clearSession?: boolean
-  } = {}) {
-    if (engine.current?.source) {
-      engine.current.source.stop?.()
-    }
-    
-    // Use startTransition to batch all state updates and prevent hydration mismatches
-    startTransition(() => {
-      // Clear logs and reset state
-      setLogs([])
-      
-      // Reset cached keys
-      cachedDateKey.current = ''
-      cachedMessageKey.current = ''
-      
-      // Set index and engine to null (this affects conditional rendering)
-      index.current = null
-      engine.current = null
-      
-      // Reset timeline state
-      setTimeframe(undefined)
-      setCurrentTimestamp(0)
-      setFollowLogs(false)
-      
-      // Clear markers and clips (these are log-related)
-      setMarkers([])
-      setClips([])
-      
-      // Clear search values
-      setSearchValues([])
-      
-      if (removeContainers) {
-        setContainers([])
-        setLockGrid(true)
-      }
-
-      if (clearSession) {
-        setSessionId(undefined)
-        setIsLiveSession(false)
-      }
-    })
-  }
-
   function resetLogs() {
     const activeSessionId = isLiveSession ? sessionId : undefined
 
@@ -501,7 +515,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     toast.success('Logs data reset. Containers and layout UI were kept.')
 
     if (activeSessionId) {
-      void handleLiveSessionStateChange(true, activeSessionId)
+      setIsLiveSession(true)
+      void startLiveSession(activeSessionId)
     }
   }
 
