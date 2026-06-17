@@ -14,7 +14,9 @@ import ExportPreset from '@/components/header/ExportPreset'
 import ResetLogs from '@/components/header/ResetLogs'
 
 const AppHeader: React.FC = () => {
-  const {index, sessionId} = useDashboard()
+  const {index, containers, sessionId} = useDashboard()
+  const hasContainers = containers.length > 0
+  const hasDashboardContext = hasContainers || !!sessionId
 
   return (
     <header
@@ -53,11 +55,11 @@ const AppHeader: React.FC = () => {
             </Badge>
           ) }
           <LiveSession/>
-          { index?.current && <ExportPreset/> }
-          { index?.current && <GridController/> }
-          { index?.current && <ResetLogs/> }
+          { hasContainers && <ExportPreset/> }
+          { hasContainers && <GridController/> }
+          { hasDashboardContext && <ResetLogs/> }
           <ThemeToggleButton/>
-          { index?.current && <AddContainer/> }
+          { hasContainers && <AddContainer/> }
         </div>
       </div>
     </header>

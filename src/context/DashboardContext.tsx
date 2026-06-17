@@ -18,6 +18,7 @@ import {randomUUID} from "@/lib/crypto-util";
 type DashboardContextType = {
   index?: RefObject<EventTypeIndex<unknown> | null>
   cachedDateKey?: RefObject<string | null>
+  containerRenderKey: string
   timeframe: { start?: number, end?: number } | undefined
   clips: Clip[]
   setClips: React.Dispatch<React.SetStateAction<Clip[]>>
@@ -57,6 +58,7 @@ type DashboardContextType = {
   setSearchValues: React.Dispatch<React.SetStateAction<Option[]>>
 
   resetLogs: () => void
+  resetWorkspace: () => void
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined)
@@ -76,6 +78,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const [ isLiveSession, setIsLiveSession ] = useState(false)
   const [ logs, setLogs ] = useState<object[]>([])
   const [ containers, setContainers ] = useState<DashboardContainer<object>[]>([])
+  // Changing this key forces mounted container components to remount.
+  // We use that to clear per-container local UI state after a data reset
+  // while keeping the saved container definitions and layout intact.
+  const [ containerRenderKey, setContainerRenderKey ] = useState(() => randomUUID())
   const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
   const [ clips, setClips ] = useState<Clip[]>([]
@@ -110,6 +116,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       pendingTsRef.current = null
     })
   }, [])
+
+  useEffect(() => {
+    containersRef.current = containers
+  }, [ containers ])
 
   // Helper to register live session and get token
   async function registerLiveSession(key: string): Promise<{ token: string; reused: boolean }> {
@@ -165,7 +175,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     return querySessionId?.trim() || null
   }
 
-  const handleFirstEventParsing = useCallback((events: LogEvent[]) => {
+  const handleFirstEventParsing = useCallback((events: LogEvent[], shouldBootstrapDefaultLogger = false) => {
     index.current = EventTypeIndex.fromSortedBatch(events)
     const {dateKey, messageKey} = discoverKeys(events[0])
 
@@ -180,7 +190,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       if (start !== null && end !== null) {
         setTimeframe({start, end})
         setCurrentTimestamp(start)
-        addDefaultLoggerContainer()
+        if (shouldBootstrapDefaultLogger) {
+          addDefaultLoggerContainer()
+        }
       } else {
         toast.error('Failed reading logs timestamp')
       }
@@ -198,7 +210,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }
 
     if (!index.current) {
-      handleFirstEventParsing(events)
+      // Bootstrap a default logs container only on an empty dashboard.
+      // This keeps reset behavior data-only and preserves existing UI layout.
+      handleFirstEventParsing(events, containersRef.current.length === 0)
     }
 
     setLogs(prev => prev.concat([ ...events ]))
@@ -429,8 +443,13 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     }))
   }
 
-  function resetLogs() {
-    // Stop engine if running
+  function clearRuntimeState({
+    removeContainers = false,
+    clearSession = false,
+  }: {
+    removeContainers?: boolean
+    clearSession?: boolean
+  } = {}) {
     if (engine.current?.source) {
       engine.current.source.stop?.()
     }
@@ -460,8 +479,35 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       // Clear search values
       setSearchValues([])
       
-      toast.success('Logs reset successfully')
+      if (removeContainers) {
+        setContainers([])
+        setLockGrid(true)
+      }
+
+      if (clearSession) {
+        setSessionId(undefined)
+        setIsLiveSession(false)
+      }
     })
+  }
+
+  function resetLogs() {
+    const activeSessionId = isLiveSession ? sessionId : undefined
+
+    clearRuntimeState()
+    // The dashboard keeps container configs/layout, but each container component may still
+    // hold local derived state. Changing this render key tells React to recreate them.
+    setContainerRenderKey(randomUUID())
+    toast.success('Logs data reset. Containers and layout UI were kept.')
+
+    if (activeSessionId) {
+      void handleLiveSessionStateChange(true, activeSessionId)
+    }
+  }
+
+  function resetWorkspace() {
+    clearRuntimeState({ removeContainers: true, clearSession: true })
+    toast.success('Workspace reset to the initial state.')
   }
 
   return (
@@ -469,6 +515,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       value={ {
         currentTimestamp,
         setCurrentTimestamp,
+        containerRenderKey,
         timeframe,
         registerObserver,
         parseFiles,
@@ -496,7 +543,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         searchValues,
         setLogs,
         isRegisteredObserver,
-        resetLogs
+        resetLogs,
+        resetWorkspace
       } }
     >
       { children }

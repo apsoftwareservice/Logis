@@ -22,11 +22,12 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 const gridSize = {lg: 19, md: 16, sm: 14, xs: 6, xxs: 2}
 
 export default function Dashboard() {
-  const {containers, lockGrid, index, updateContainerSize, parseFiles} = useDashboard()
+  const {containers, lockGrid, index, containerRenderKey, updateContainerSize, parseFiles} = useDashboard()
+  const hasContainers = containers.length > 0
 
   return (
     <div className="relative h-full w-full flex flex-col">
-      { !index?.current ? (
+      { !index?.current && !hasContainers ? (
         <div className={ 'min-h-[calc(100vh-100px)] items-center w-full flex' }>
           <MainWaitingView animation={ cat } title={ "Drag log file, or start Live Session" }/>
         </div>
@@ -53,55 +54,57 @@ export default function Dashboard() {
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore*/ }
-                      <GraphView container={ container }/>
+                      {/* Keep the grid item key stable for layout persistence, but remount the
+                          inner view after reset so its local UI state is cleared. */}
+                      <GraphView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.table:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <TableView container={ container }/>
+                      <TableView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.state:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <StateView container={ container }/>
+                      <StateView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.event:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <EventView container={ container }/>
+                      <EventView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                   case ContainerType.statefulEvent:
                       return (
                           <div key={ container.id } data-grid={ container.gridLayout }>
                               {/* @ts-expect-error ignore */ }
-                              <StatefulEventView container={ container }/>
+                              <StatefulEventView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                           </div>
                       )
                 case ContainerType.target:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <TargetView container={ container }/>
+                      <TargetView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.logs:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
-                      <LoggerView container={ container }/>
+                      <LoggerView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.action:
                   return (
                     <div key={ container.id } data-grid={ container.gridLayout }>
                       {/* @ts-expect-error ignore */ }
-                      <ActionView container={ container }/>
+                      <ActionView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 default:

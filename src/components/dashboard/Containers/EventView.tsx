@@ -18,7 +18,7 @@ export function EventView({container}: { container: DashboardContainer<EventMode
     if(!index?.current) return
     registerObserver(eventObserver(container.data.event, index.current!))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ container ]);
+  }, [ container, index?.current ]);
 
   const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
     id: randomUUID(),

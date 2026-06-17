@@ -380,6 +380,18 @@ export default function GenericTable<TData extends Record<string, any>>({
 
           <div className="min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
             <div ref={parentRef} className="h-full overflow-auto" style={{ scrollbarGutter: 'stable' }}>
+              {data.length === 0 ? (
+                <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center">
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      No data yet
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Make sure you are in a live session and send data/load a file to populate this table
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div className="w-full">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <div className="sticky top-0 z-10 dark:bg-gray-900 bg-gray-200 border-b border-gray-300 dark:border-gray-600 flex">
@@ -417,6 +429,7 @@ export default function GenericTable<TData extends Record<string, any>>({
                   })}
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>

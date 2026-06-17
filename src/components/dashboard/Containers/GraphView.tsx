@@ -96,7 +96,7 @@ export default function GraphView({container}: { container: DashboardContainer<S
     const uniqueEvents = Array.from(new Set(seriesArr.map(s => s.event))).filter(Boolean) as string[]
     uniqueEvents.forEach(ev => registerObserver(eventObserver(ev, index.current!)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ container ])
+  }, [ container, index?.current ])
 
   const areaOptions: ApexOptions = {
     legend: {
