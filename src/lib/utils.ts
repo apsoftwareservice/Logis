@@ -178,6 +178,22 @@ export function toMs(v: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+export function formatDisplayValue(value: unknown): string {
+  if (value == null) return '-'
+  if (typeof value === 'string') return value || '-'
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
+  }
+
+  return String(value)
+}
+
 export function seekValueToEpochMs(value: number, startTime: number, endTime: number) {
   const durationMs = endTime - startTime;
 

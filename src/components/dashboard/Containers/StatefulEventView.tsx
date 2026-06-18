@@ -9,7 +9,7 @@ import inprogress from '@lottie/in-progress.json'
 import loader from '@lottie/Loadder.json'
 import { StatefulEventConfigurationPopover } from '@/components/ui/popover/StatefulEventConfigurationPopover'
 import { randomUUID } from "@/lib/crypto-util"
-import { getNestedValue } from "@/lib/utils";
+import { formatDisplayValue, getNestedValue } from "@/lib/utils";
 
 export function StatefulEventView({container}: { container: DashboardContainer<StatefulEventModel> }) {
   const {registerObserver, index, setContainer} = useDashboard()
@@ -35,7 +35,7 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
       const lastStopEvent = stopEventBucket.getLastEventAtOrBefore(timestampMs)
 
       if (lastStartEvent?.data && container.data.parameterKey) {
-        setParameter(getNestedValue(lastStartEvent.data as any, container.data.parameterKey))
+        setParameter(formatDisplayValue(getNestedValue(lastStartEvent.data as any, container.data.parameterKey)))
       } else {
         setParameter('')
       }
@@ -69,9 +69,9 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
         </div>
         { eventDidCalled && parameter !== '' && (
         <div className="flex w-full justify-center items-center">
-          <h4 className="font-bold text-gray-800 text-sm dark:text-white/90">
+          <pre className="whitespace-pre-wrap break-words text-center font-bold text-gray-800 text-sm dark:text-white/90">
             { parameter }
-          </h4>
+          </pre>
         </div>
             ) }
       </>
