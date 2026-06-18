@@ -117,7 +117,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   }, [ containers ])
 
   // Helper to register live session and get token
-  async function registerLiveSession(key: string): Promise<{ token: string; reused: boolean }> {
+  const registerLiveSession = useCallback(async (key: string): Promise<{ token: string; reused: boolean }> => {
     const res = await fetch(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/register`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -128,16 +128,16 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       throw new Error(`Register failed (${ res.status }): ${ text || res.statusText }`)
     }
     return res.json()
-  }
+  }, [ baseUrl ])
 
   // Stop the current runtime data stream while optionally keeping the current session id.
-  function clearRuntimeState({
+  const clearRuntimeState = useCallback(({
     removeContainers = false,
     clearSession = false,
   }: {
     removeContainers?: boolean
     clearSession?: boolean
-  } = {}) {
+  } = {}) => {
     if (engine.current?.source) {
       engine.current.source.stop?.()
     }
@@ -177,56 +177,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setIsLiveSession(false)
       }
     })
-  }
-
-  async function startLiveSession(sessionKey: string) {
-    clearRuntimeState()
-
-    // Keep the dashboard shell and only swap the live data source.
-    setContainerRenderKey(randomUUID())
-    setTimeframe({ start: 0, end: 0 })
-
-    try {
-      const { token } = await registerLiveSession(sessionKey)
-      setSessionId(sessionKey)
-      await startEngineWithSource(
-        createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/stream?token=${ token }`)
-      )
-    } catch (e: any) {
-      toast.error(`${ e }`)
-      setIsLiveSession(false)
-    }
-  }
-
-  async function handleLiveSessionStateChange(state: boolean, customId?: string) {
-    if (engine.current && engine.current?.source.type !== InputType.stream) {
-      toast.error('Refresh the page and start with Live Session')
-      return
-    }
-
-    if (!state) {
-      setIsLiveSession(false)
-      if (engine.current?.source) {
-        engine.current.source.stop?.()
-        toast.info('Live Session Stopped')
-      }
-      setFollowLogs(false)
-      return
-    }
-
-    const trimmedId = customId?.trim()
-    const nextSessionId = trimmedId || sessionId || randomUUID()
-    setIsLiveSession(true)
-
-    // If the caller supplied a custom ID, treat it as a fresh live source.
-    if (trimmedId || !engine.current) {
-      await startLiveSession(nextSessionId)
-      return
-    }
-
-    // No custom id and a live source already exists: reconnect to the same stream.
-    engine.current.source.start(handleSourceEvents)
-  }
+  }, [])
 
   function appendNewEventsFromSource(source: InputSource) {
     source.start((events) => {
@@ -328,6 +279,55 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     engine.current.source.start(handleSourceEvents)
   }, [ handleSourceEvents ])
 
+  const startLiveSession = useCallback(async (sessionKey: string) => {
+    clearRuntimeState()
+
+    // Keep the dashboard shell and only swap the live data source.
+    setContainerRenderKey(randomUUID())
+    setTimeframe({ start: 0, end: 0 })
+
+    try {
+      const { token } = await registerLiveSession(sessionKey)
+      setSessionId(sessionKey)
+      await startEngineWithSource(
+        createEventSourceInput(`${ process.env.NEXT_PUBLIC_BASE_URL ?? baseUrl }/stream?token=${ token }`)
+      )
+    } catch (e: any) {
+      toast.error(`${ e }`)
+      setIsLiveSession(false)
+    }
+  }, [ baseUrl, clearRuntimeState, registerLiveSession, startEngineWithSource ])
+
+  const handleLiveSessionStateChange = useCallback(async (state: boolean, customId?: string) => {
+    if (engine.current && engine.current?.source.type !== InputType.stream) {
+      toast.error('Refresh the page and start with Live Session')
+      return
+    }
+
+    if (!state) {
+      setIsLiveSession(false)
+      if (engine.current?.source) {
+        engine.current.source.stop?.()
+        toast.info('Live Session Stopped')
+      }
+      setFollowLogs(false)
+      return
+    }
+
+    const trimmedId = customId?.trim()
+    const nextSessionId = trimmedId || sessionId || randomUUID()
+    setIsLiveSession(true)
+
+    // If the caller supplied a custom ID, treat it as a fresh live source.
+    if (trimmedId || !engine.current) {
+      await startLiveSession(nextSessionId)
+      return
+    }
+
+    // No custom id and a live source already exists: reconnect to the same stream.
+    engine.current.source.start(handleSourceEvents)
+  }, [ handleSourceEvents, sessionId, startLiveSession ])
+
   useEffect(() => {
     const sessionIdFromUrl = getSessionIdFromUrl()
     if (!sessionIdFromUrl || autoStartedSessionRef.current === sessionIdFromUrl) {
@@ -337,7 +337,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     autoStartedSessionRef.current = sessionIdFromUrl
     setSessionId(sessionIdFromUrl)
     handleLiveSessionStateChange(true, sessionIdFromUrl)
-  }, [])
+  }, [ handleLiveSessionStateChange ])
 
   useEffect(() => {
     const tempMarkers: Marker[] = []

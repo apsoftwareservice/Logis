@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { EventTypeIndex } from '@/core/engine'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { Series } from '@/types/containers'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 import ConfigurationPopover from '@/components/ui/popover/ConfigurationPopover'
+import EventSelect from '@/components/ui/popover/EventSelect'
 
 export interface GraphConfigurationPopoverProps {
   index: EventTypeIndex
@@ -18,10 +18,17 @@ export function GraphConfigurationPopover({index, currentValue, onChange}: Graph
 
   const [ seriesList, setSeriesList ] = useState<Series[]>(currentValue)
 
+  useEffect(() => {
+    if (isOpen) {
+      setSeriesList(currentValue)
+    }
+  }, [ currentValue, isOpen ])
+
   return (
     <ConfigurationPopover
       isOpen={ isOpen }
       setIsOpen={ setIsOpen }
+      contentClassName="w-[34rem]"
       onApply={ () => {
         if (!seriesList.length) return false
 
@@ -69,26 +76,17 @@ export function GraphConfigurationPopover({index, currentValue, onChange}: Graph
 
               <div className={ 'flex flex-col gap-2' }>
                 <Label>Event</Label>
-                <Select
+                <EventSelect
+                  index={ index }
                   value={ s.event }
-                  onValueChange={ (value) => setSeriesList(list => list.map(x => x.id === s.id ? ({
+                  isOpen={ isOpen }
+                  onChange={ (value) => setSeriesList(list => list.map(x => x.id === s.id ? ({
                     ...x,
                     event: value,
                     xAxisParameterName: '',
                     yAxisParameterName: ''
                   }) : x)) }
-                >
-                  <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900">
-                    <SelectValue placeholder="Select event"/>
-                  </SelectTrigger>
-                  <SelectContent className={ 'bg-white' }>
-                    { (index?.listTypes() ?? []).map((ev, idx) => (
-                      <SelectItem key={ String(ev) + idx } value={ String(ev) }>
-                        { String(ev) }
-                      </SelectItem>
-                    )) }
-                  </SelectContent>
-                </Select>
+                />
               </div>
 
               <div className="grid gap-2">

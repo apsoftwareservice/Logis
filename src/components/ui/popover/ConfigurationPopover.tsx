@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
 import { closeDashboardDropdowns } from '@/components/ui/dropdown/dropdownEvents'
 
 interface ConfigurationPopoverProps {
@@ -32,9 +33,7 @@ export default function ConfigurationPopover({
       modal
       open={ isOpen }
       onOpenChange={ (open) => {
-        if (open) {
-          setIsOpen(true)
-        }
+        setIsOpen(open)
       } }
     >
       <PopoverTrigger asChild>
@@ -44,40 +43,52 @@ export default function ConfigurationPopover({
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className={ contentClassName }
+        align="start"
+        sideOffset={ 8 }
+        collisionPadding={ 8 }
+        className={ cn(
+          'max-h-[min(85vh,var(--radix-popover-content-available-height))] max-w-[calc(100vw-1rem)] overflow-hidden p-0',
+          contentClassName
+        ) }
         data-dropdown-lock-outside
         onInteractOutside={ (e) => e.preventDefault() }
         onMouseDown={ (e) => {
           e.stopPropagation()
         } }
       >
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="leading-none font-medium">{ title }</h4>
+        <div className="flex max-h-[min(85vh,var(--radix-popover-content-available-height))] min-h-0 flex-col">
+          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4">
+            <div className="grid gap-4 pb-4">
+              <div className="space-y-2">
+                <h4 className="leading-none font-medium">{ title }</h4>
+              </div>
+
+              { children }
+            </div>
           </div>
 
-          { children }
-        </div>
+          <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-800">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Button variant="destructive" onClick={ closeAll }>
+                  Close
+                </Button>
+                { footerStart }
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="default"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={ () => {
+                    if (onApply() === false) return
 
-        <div className="flex items-center justify-between gap-2 pt-4">
-          <div className="flex items-center gap-2">
-            <Button variant="destructive" onClick={ closeAll }>
-              Close
-            </Button>
-            { footerStart }
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="default"
-              className="bg-blue-600 text-white hover:bg-blue-700"
-              onClick={ () => {
-                if (onApply() === false) return
-
-                closeAll()
-              } }
-            >
-              Apply
-            </Button>
+                    closeAll()
+                  } }
+                >
+                  Apply
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </PopoverContent>

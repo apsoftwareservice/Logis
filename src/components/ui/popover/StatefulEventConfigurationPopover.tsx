@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { EventTypeIndex } from '@/core/engine'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { Label } from "@/components/ui/label";
 import NestedSelect, { NestedObject } from "@/components/ui/nestedSelect";
 import { toast } from "react-toastify";
 import ConfigurationPopover from '@/components/ui/popover/ConfigurationPopover'
+import EventSelect from '@/components/ui/popover/EventSelect'
 
 export interface StatefulEventConfigurationPopoverProps {
   index: EventTypeIndex
@@ -22,6 +22,14 @@ export function StatefulEventConfigurationPopover({index, currentStartEvent, cur
   const [ options, setOptions ] = useState<NestedObject>()
 
   useEffect(() => {
+    if (isOpen) {
+      setStartEvent(currentStartEvent)
+      setStopEvent(currentStopEvent)
+      setParameterKey(currentParameterKey)
+    }
+  }, [ currentParameterKey, currentStartEvent, currentStopEvent, isOpen ])
+
+  useEffect(() => {
     const bucket = index.getBucket(startEvent)
 
     if (bucket) {
@@ -32,41 +40,51 @@ export function StatefulEventConfigurationPopover({index, currentStartEvent, cur
       } else {
         toast.warning('Event has no data')
       }
+    } else {
+      setOptions(undefined)
     }
   }, [ index, startEvent ])
+
+  const applySelection = (nextStartEvent: string, nextStopEvent: string, nextParameterKey: string) => {
+    onChange(nextStartEvent, nextStopEvent, nextParameterKey)
+    setIsOpen(false)
+  }
 
   return (
     <ConfigurationPopover
       isOpen={ isOpen }
       setIsOpen={ setIsOpen }
+      contentClassName="w-[26rem]"
       onApply={ () => onChange(startEvent, stopEvent, parameterKey) }
     >
-      <Select value={ startEvent } onValueChange={ (value) => setStartEvent(value) }>
-        <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900">
-          <SelectValue placeholder="Select start event"/>
-        </SelectTrigger>
-        <SelectContent className={ 'bg-white' }>
-          { (index?.listTypes() ?? []).map((event, index) => (
-            <SelectItem key={ String(event) + index } value={ String(event) }>
-              { String(event) }
-            </SelectItem>
-          )) }
-        </SelectContent>
-      </Select>
+      <EventSelect
+        index={ index }
+        value={ startEvent }
+        onChange={ setStartEvent }
+        onDoubleClick={ (event) => {
+          if (stopEvent) {
+            applySelection(event, stopEvent, parameterKey)
+          }
+        } }
+        isOpen={ isOpen }
+        placeholder="Search start events"
+        listClassName="h-36"
+      />
 
       <div>
-        <Select value={ stopEvent } onValueChange={ (value) => setStopEvent(value) }>
-          <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900">
-            <SelectValue placeholder="Select stop event"/>
-          </SelectTrigger>
-          <SelectContent className={ 'bg-white' }>
-            { (index?.listTypes() ?? []).map((event, index) => (
-                <SelectItem key={ String(event) + index } value={ String(event) }>
-                  { String(event) }
-                </SelectItem>
-            )) }
-          </SelectContent>
-        </Select>
+        <EventSelect
+          index={ index }
+          value={ stopEvent }
+          onChange={ setStopEvent }
+          onDoubleClick={ (event) => {
+            if (startEvent) {
+              applySelection(startEvent, event, parameterKey)
+            }
+          } }
+          isOpen={ isOpen }
+          placeholder="Search stop events"
+          listClassName="h-36"
+        />
         { startEvent && (
           <div className="grid gap-2 pt-2">
             <Label className="text-gray-500">Value (optional)</Label>

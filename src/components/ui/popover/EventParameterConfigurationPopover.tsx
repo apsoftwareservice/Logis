@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { EventTypeIndex } from '@/core/engine'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { Label } from '@/components/ui/label'
 import NestedSelect, { NestedObject } from '@/components/ui/nestedSelect'
 import { toast } from 'react-toastify'
 import ConfigurationPopover from '@/components/ui/popover/ConfigurationPopover'
+import EventSelect from '@/components/ui/popover/EventSelect'
 
 export interface EventParameterConfigurationPopoverProps {
   index: EventTypeIndex
@@ -20,6 +20,13 @@ export function EventParameterConfigurationPopover({index, currentEvent, current
   const [ options, setOptions ] = useState<NestedObject>()
 
   useEffect(() => {
+    if (isOpen) {
+      setEvent(currentEvent)
+      setValue(currentParameterKey)
+    }
+  }, [ currentEvent, currentParameterKey, isOpen ])
+
+  useEffect(() => {
     const bucket = index.getBucket(event)
 
     if (bucket) {
@@ -30,23 +37,14 @@ export function EventParameterConfigurationPopover({index, currentEvent, current
       } else {
         toast.warning('Event has not data')
       }
+    } else {
+      setOptions(undefined)
     }
   }, [ index, event ])
 
   return (
     <ConfigurationPopover isOpen={ isOpen } setIsOpen={ setIsOpen } onApply={ () => onChange(event, value) }>
-      <Select value={ event } onValueChange={ (value) => setEvent(value) }>
-        <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900">
-          <SelectValue placeholder="Select event"/>
-        </SelectTrigger>
-        <SelectContent className={ 'bg-white' }>
-          { (index?.listTypes() ?? []).map((event, index) => (
-            <SelectItem key={ String(event) + index } value={ String(event) }>
-              { String(event) }
-            </SelectItem>
-          )) }
-        </SelectContent>
-      </Select>
+      <EventSelect index={ index } value={ event } onChange={ setEvent } isOpen={ isOpen } />
 
       { event && (
         <div className="grid gap-2">
