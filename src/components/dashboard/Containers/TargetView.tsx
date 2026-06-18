@@ -9,7 +9,7 @@ import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfig
 import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
-import { getNestedValue } from '@/lib/utils'
+import { getNestedValue, parseNumeric } from '@/lib/utils'
 import { randomUUID } from "@/lib/crypto-util"
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -88,10 +88,10 @@ export default function TargetView({container}: { container: DashboardContainer<
 
       if (data && container.data.parameterKey) {
         const rawValue = getNestedValue(data as any, container.data.parameterKey)
-        const value = typeof rawValue === 'number' ? rawValue : Number(rawValue)
+        const value = parseNumeric(rawValue)
         const maxValue = container.data.maxValue || DEFAULT_TARGET_MAX_VALUE
 
-        if (Number.isFinite(value) && Number.isFinite(maxValue) && maxValue > 0) {
+        if (value != null && Number.isFinite(maxValue) && maxValue > 0) {
           setCurrentValue(value)
           setPercentage((value / maxValue) * 100)
           return
