@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import BaseView from '@/components/dashboard/BaseView'
 import { DashboardContainer, DEFAULT_TARGET_MAX_VALUE, TargetModel } from '@/types/containers'
 import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfigurationPopover'
+import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import { getNestedValue } from '@/lib/utils'
@@ -18,7 +19,9 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
   const {index, registerObserver, setContainer} = useDashboard()
   const [ percentage, setPercentage ] = useState(0)
+  const [ currentValue, setCurrentValue ] = useState(0)
 
+  const targetMaxValue = container.data.maxValue || DEFAULT_TARGET_MAX_VALUE
   const visualPercentage = Math.min(Math.max(percentage, 0), 100)
   const isOverMax = percentage > 100
   const gaugeColor = isOverMax ? "#EF4444" : "#465FFF"
@@ -64,7 +67,7 @@ export default function TargetView({container}: { container: DashboardContainer<
       lineCap: "round"
     },
     labels: [ 'Progress' ]
-  }), [ gaugeColor, percentage ])
+  }), [ gaugeColor ])
 
   useEffect(() => {
     if(!index?.current) return
@@ -89,11 +92,13 @@ export default function TargetView({container}: { container: DashboardContainer<
         const maxValue = container.data.maxValue || DEFAULT_TARGET_MAX_VALUE
 
         if (Number.isFinite(value) && Number.isFinite(maxValue) && maxValue > 0) {
+          setCurrentValue(value)
           setPercentage((value / maxValue) * 100)
           return
         }
       }
 
+      setCurrentValue(0)
       setPercentage(0)
     }
   })
@@ -101,24 +106,35 @@ export default function TargetView({container}: { container: DashboardContainer<
   return (
     <BaseView body={
       <div className="h-full items-center overflow-hidden flex px-5 pt-5 pb-11 align-middle justify-center">
-        <div className="relative">
-          <div className="max-h-[330px]">
-            <ReactApexChart
-              options={ options }
-              series={ series }
-              type="radialBar"
-              height={ 330 }
-            />
+        <TooltipWrapper
+          delayDuration={ 0 }
+          side={ 'top' }
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-800 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          content={
+            <div className="font-medium">
+              { `${ currentValue.toFixed(2) } / ${ targetMaxValue.toFixed(2) }` }
+            </div>
+          }
+        >
+          <div className="relative">
+            <div className="max-h-[330px]">
+              <ReactApexChart
+                options={ options }
+                series={ series }
+                type="radialBar"
+                height={ 330 }
+              />
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              <span
+                className="text-[30px] font-semibold text-[#1D2939] dark:text-white/90"
+                style={ { transform: 'translateY(10px)' } }
+              >
+                { `${ percentage.toFixed(2) }%` }
+              </span>
+            </div>
           </div>
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span
-              className="text-[30px] font-semibold text-[#1D2939] dark:text-white/90"
-              style={ { transform: 'translateY(10px)' } }
-            >
-              { `${ percentage.toFixed(2) }%` }
-            </span>
-          </div>
-        </div>
+        </TooltipWrapper>
       </div>
     } configuration={
       <>
