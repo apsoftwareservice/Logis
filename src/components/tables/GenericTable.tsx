@@ -24,11 +24,10 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowDown, Check, Cog, Search } from 'lucide-react'
+import { ArrowDown, Check, Cog, Plus, Search, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -37,8 +36,13 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown/dropdown-menu'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { DashboardContainer } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
+import { getNestedValue } from '@/lib/utils'
+import { toast } from 'react-toastify'
 
 const DEFAULT_AUTO_FIT_ENABLED = false
 const MANUAL_MODE_SAMPLE_ROWS = 10
@@ -112,6 +116,17 @@ function getColumnId<TData extends Record<string, any>>(column: ColumnDef<TData,
   )
 }
 
+function getColumnValue<TData extends Record<string, any>>(column: ColumnDef<TData, any>, row: TData, rowIndex: number) {
+  const accessorFn = (column as any).accessorFn
+  if (typeof accessorFn === 'function') {
+    return accessorFn(row, rowIndex)
+  }
+
+  const columnId = getColumnId(column)
+  if (!columnId) return undefined
+  return (row as any)?.[columnId]
+}
+
 // Estimate a column width from two sources:
 // 1. the header text, because the header itself must fit
 // 2. the longest value in the current dataset for that column
@@ -129,7 +144,7 @@ function estimateColumnWidth<TData extends Record<string, any>>(
   let longest = getLongestLineLength(headerText)
 
   for (let i = 0; i < rows.length; i++) {
-    const value = rows[i]?.[columnId]
+    const value = getColumnValue(column, rows[i], i)
     longest = Math.max(longest, getLongestLineLength(stringifyCellValue(value, beautifyJSON)))
   }
 
@@ -175,6 +190,221 @@ function haveSameSizes(a: Record<string, number>, b: Record<string, number>) {
   return (
     Object.keys(a).length === Object.keys(b).length &&
     Object.entries(a).every(([ key, width ]) => b[key] === width)
+  )
+}
+
+type CustomColumnConfig = {
+  id: string
+  label: string
+  path: string
+}
+
+function buildCustomColumnId(path: string) {
+  return `custom:${path}`
+}
+
+const MAX_PATH_SUGGESTIONS = 20
+const MAX_ROWS_SCANNED_FOR_SUGGESTIONS = 500
+
+// Split a partially-typed path into the already-resolved parent path and the segment still
+// being typed, so suggestions only ever need to look one level deep, not the whole tree.
+function splitPathForSuggestions(path: string): { parentPath: string; prefix: string; isIndex: boolean } {
+  const lastDot = path.lastIndexOf('.')
+  const lastBracket = path.lastIndexOf('[')
+
+  if (lastBracket > lastDot) {
+    return { parentPath: path.slice(0, lastBracket), prefix: path.slice(lastBracket + 1), isIndex: true }
+  }
+  if (lastDot >= 0) {
+    return { parentPath: path.slice(0, lastDot), prefix: path.slice(lastDot + 1), isIndex: false }
+  }
+  return { parentPath: '', prefix: path, isIndex: false }
+}
+
+// Collect the union of key names (or array indices) one level below parentPath, scanning only
+// that one level across rows - cheap regardless of dataset size or how deeply nested paths get.
+function getPathSuggestions<TData>(rows: TData[], parentPath: string, prefix: string): string[] {
+  const keys = new Set<string>()
+
+  for (let i = 0; i < rows.length && i < MAX_ROWS_SCANNED_FOR_SUGGESTIONS; i++) {
+    const value = parentPath ? getNestedValue(rows[i] as any, parentPath as any) : rows[i]
+    if (value == null || typeof value !== 'object') continue
+
+    if (Array.isArray(value)) {
+      value.forEach((_, index) => keys.add(String(index)))
+    } else {
+      Object.keys(value).forEach(key => keys.add(key))
+    }
+  }
+
+  const lowerPrefix = prefix.toLowerCase()
+  return Array.from(keys)
+    .filter(key => key.toLowerCase().startsWith(lowerPrefix))
+    .sort()
+    .slice(0, MAX_PATH_SUGGESTIONS)
+}
+
+function CustomColumnBuilder<TData extends Record<string, any>>({
+  rows,
+  onAdd,
+  onCancel,
+}: {
+  rows: TData[]
+  onAdd: (column: { label: string; path: string }) => void
+  onCancel?: () => void
+}) {
+  const [ label, setLabel ] = useState('')
+  const [ path, setPath ] = useState('')
+  const [ isPathFocused, setIsPathFocused ] = useState(false)
+  const [ highlightedIndex, setHighlightedIndex ] = useState(-1)
+  const suggestionRefs = useRef<(HTMLButtonElement | null)[]>([])
+
+  const reset = () => {
+    setLabel('')
+    setPath('')
+  }
+
+  const { parentPath, prefix, isIndex } = splitPathForSuggestions(path)
+  const rawSuggestions = useMemo(
+      () => (rows.length ? getPathSuggestions(rows, parentPath, prefix) : []),
+      [rows, parentPath, prefix]
+  )
+  // A lone suggestion that exactly equals what's already typed isn't a real choice -
+  // there's nothing left to complete, so don't offer it (and treat it as "nothing to pick").
+  const suggestions = useMemo(() => {
+    if (rawSuggestions.length === 1 && rawSuggestions[0].toLowerCase() === prefix.toLowerCase()) {
+      return []
+    }
+    return rawSuggestions
+  }, [rawSuggestions, prefix])
+
+  // A fresh set of suggestions (new path segment) should never keep a stale highlight.
+  useEffect(() => {
+    setHighlightedIndex(-1)
+  }, [suggestions])
+
+  // Keep the highlighted option visible when arrow-navigating past the scrollable window.
+  useEffect(() => {
+    suggestionRefs.current[highlightedIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [highlightedIndex])
+
+  const applySuggestion = (key: string) => {
+    const nextPath = isIndex
+      ? `${parentPath}[${key}]`
+      : parentPath ? `${parentPath}.${key}` : key
+
+    // If this key has children, advance straight to them instead of re-suggesting
+    // the key itself (which would otherwise match its own name as a "prefix").
+    const hasChildren = rows.length ? getPathSuggestions(rows, nextPath, '').length > 0 : false
+
+    setPath(hasChildren ? `${nextPath}.` : nextPath)
+    setLabel(nextPath)
+  }
+
+  const canSubmit = Boolean(path.trim()) && !/[.[]$/.test(path.trim())
+
+  const submitColumn = () => {
+    if (!canSubmit) return
+    onAdd({
+      label: label.trim() || path.trim(),
+      path: path.trim(),
+    })
+    reset()
+  }
+
+  const handlePathKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      if (!suggestions.length) return
+      event.preventDefault()
+      setHighlightedIndex(i => (i + 1) % suggestions.length)
+    } else if (event.key === 'ArrowUp') {
+      if (!suggestions.length) return
+      event.preventDefault()
+      setHighlightedIndex(i => (i <= 0 ? suggestions.length - 1 : i - 1))
+    } else if (event.key === 'Enter') {
+      event.preventDefault()
+      if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+        applySuggestion(suggestions[highlightedIndex])
+      } else if (!suggestions.length) {
+        // Nothing left to pick in the suggestions window - Enter finishes, same as clicking Add.
+        submitColumn()
+      }
+    } else if (event.key === 'Escape') {
+      setIsPathFocused(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+      <div className="space-y-1">
+        <div className="text-xs font-medium text-gray-700 dark:text-gray-200">Add custom column</div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">
+          Type a nested path (e.g. payload.order.customer.name), then name it.
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Column name</div>
+        <Input
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="e.g. User Name"
+          className="h-8 bg-white text-sm dark:bg-gray-950"
+        />
+      </div>
+
+      <div className="relative mt-3 space-y-1">
+        <div className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Column value path</div>
+        <Input
+          value={path}
+          onChange={(e) => { setPath(e.target.value); setIsPathFocused(true) }}
+          onFocus={() => setIsPathFocused(true)}
+          onBlur={() => setIsPathFocused(false)}
+          onKeyDown={handlePathKeyDown}
+          placeholder="payload.order.customer.name"
+          className="h-8 bg-white font-mono text-sm dark:bg-gray-950"
+        />
+        {isPathFocused && suggestions.length > 0 ? (
+          <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+            {suggestions.map((key, index) => (
+              <button
+                key={key}
+                ref={(el) => { suggestionRefs.current[index] = el }}
+                type="button"
+                className={`flex w-full rounded px-2 py-1 text-left text-xs text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5 ${
+                  index === highlightedIndex ? 'bg-gray-100 dark:bg-white/5' : ''
+                }`}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setHighlightedIndex(index)}
+                onClick={() => applySuggestion(key)}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {rows.length === 0 ? (
+          <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+            Load logs first so we can suggest paths.
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex items-center justify-end gap-2">
+        <Button type="button" size="sm" variant="ghost" onClick={() => { reset(); onCancel?.() }}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!canSubmit}
+          onClick={submitColumn}
+        >
+          <Plus className="h-4 w-4" />
+          Add
+        </Button>
+      </div>
+    </div>
   )
 }
 
@@ -468,6 +698,7 @@ export default function GenericTable<TData extends Record<string, any>>({
 }) {
   const { removeContainer, setFollowLogs } = useDashboard()
   const [activeFilterColumnId, setActiveFilterColumnId] = useState<string | null>(null)
+  const [isAddColumnOpen, setIsAddColumnOpen] = useState(false)
 
   // A stable key per table instance for persistence namespaces
   const tableKey = useMemo(() => `table:${container?.id ?? 'generic'}`, [container?.id])
@@ -482,6 +713,9 @@ export default function GenericTable<TData extends Record<string, any>>({
   )
   const [hiddenColumns, setHiddenColumns] = useState<string[]>(
       () => storage.get<string[]>(`${tableKey}:hiddenColumns`, [])
+  )
+  const [customColumns, setCustomColumns] = useState<CustomColumnConfig[]>(
+      () => storage.get<CustomColumnConfig[]>(`${tableKey}:customColumns`, [])
   )
   const [autoFitEnabled, setAutoFitEnabled] = useState<boolean>(
       () => storage.get<boolean>(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
@@ -514,45 +748,89 @@ export default function GenericTable<TData extends Record<string, any>>({
       }
     }))
     setColumns(mapped)
+  }, [columnsProp, beautifyJSON, tableKey])
 
-    const ids = mapped
-        .map((c: any) => (c.accessorKey as string) ?? (c.id as string))
-        .filter(Boolean)
+  const customColumnDefs = useMemo<ColumnDef<TData, any>[]>(() => {
+    return customColumns.map((custom) => ({
+      id: custom.id,
+      header: custom.label || custom.path,
+      accessorFn: (row: TData) => getNestedValue(row as any, custom.path as any),
+      cell: (info: any) => {
+        const value = info.getValue() as unknown
+        if (typeof value === 'number' && String(value).length === 13) {
+          return new Date(value).toLocaleString()
+        }
+        if (typeof value === 'object') {
+          const text = beautifyJSON ? JSON.stringify(value, null, 2) : JSON.stringify(value)
+          return <pre className="m-0 whitespace-pre-wrap break-words">{text}</pre>
+        }
+        return <span className="whitespace-pre-wrap break-words">{String(value ?? '')}</span>
+      },
+      meta: {
+        isCustomColumn: true,
+        sourcePath: custom.path,
+      },
+    }))
+  }, [customColumns, beautifyJSON])
 
-    // reconcile column order (keep known, append new)
+  const allColumns = useMemo(() => [...columns, ...customColumnDefs], [columns, customColumnDefs])
+  const allColumnIds = useMemo(
+      () => allColumns.map((column: any) => getColumnId(column)).filter(Boolean) as string[],
+      [allColumns]
+  )
+  const columnLookup = useMemo(
+      () => new Map(allColumns.map(column => [getColumnId(column) ?? '', column])),
+      [allColumns]
+  )
+  const customColumnIdSet = useMemo(
+      () => new Set(customColumns.map(column => column.id)),
+      [customColumns]
+  )
+  const preserveMissingNativeColumns = columns.length === 0
+  const hiddenColumnSet = useMemo(() => new Set(hiddenColumns), [hiddenColumns])
+  const visibleColumns = useMemo(
+      () => allColumns.filter(column => !hiddenColumnSet.has(getColumnId(column) ?? '')),
+      [allColumns, hiddenColumnSet]
+  )
+  const visibleColumnOrder = useMemo(
+      () => columnOrder.filter(id => !hiddenColumnSet.has(id) && allColumnIds.includes(id)),
+      [columnOrder, hiddenColumnSet, allColumnIds]
+  )
+
+  useEffect(() => {
+    // Reconcile persisted column order/sizing/visibility against the current schema,
+    // including custom columns created from the gear menu.
+    const shouldKeepId = (id: string) => (
+      allColumnIds.includes(id) ||
+      (preserveMissingNativeColumns && !customColumnIdSet.has(id))
+    )
+
     setColumnOrder(prev => {
       const prevOrStored = (prev?.length ? prev : storage.get<string[]>(`${tableKey}:order`, []))
-      const kept = prevOrStored.filter(id => ids.includes(id))
-      const appended = ids.filter(id => !kept.includes(id))
+      const kept = prevOrStored.filter(shouldKeepId)
+      const appended = allColumnIds.filter(id => !kept.includes(id))
       const next = [...kept, ...appended]
       storage.set(`${tableKey}:order`, next)
       return next
     })
 
-    // prune sizing for removed columns
     setColumnSizing(prev => {
       const next: Record<string, number> = {}
-      ids.forEach(id => { if (prev[id] != null) next[id] = prev[id] })
+      Object.entries(prev).forEach(([ id, size ]) => {
+        if (shouldKeepId(id)) {
+          next[id] = size
+        }
+      })
       storage.set(`${tableKey}:sizes`, next)
       return next
     })
 
     setHiddenColumns(prev => {
-      const next = prev.filter(id => ids.includes(id))
+      const next = prev.filter(shouldKeepId)
       storage.set(`${tableKey}:hiddenColumns`, next)
       return next
     })
-  }, [columnsProp, beautifyJSON, tableKey])
-
-  const hiddenColumnSet = useMemo(() => new Set(hiddenColumns), [hiddenColumns])
-  const visibleColumns = useMemo(
-      () => columns.filter(column => !hiddenColumnSet.has(getColumnId(column) ?? '')),
-      [columns, hiddenColumnSet]
-  )
-  const visibleColumnOrder = useMemo(
-      () => columnOrder.filter(id => !hiddenColumnSet.has(id)),
-      [columnOrder, hiddenColumnSet]
-  )
+  }, [allColumnIds, customColumnIdSet, preserveMissingNativeColumns, tableKey])
 
   // Auto-fit mode: while enabled, widths always follow the longest value in the dataset (max width: AUTO_FIT_MAX_WIDTH)
   useEffect(() => {
@@ -561,7 +839,7 @@ export default function GenericTable<TData extends Record<string, any>>({
     }
 
     const nextAutoSizes = computeAutoFitColumnSizes(
-      columnsProp,
+      allColumns,
       data ?? [],
       beautifyJSON
     )
@@ -573,17 +851,17 @@ export default function GenericTable<TData extends Record<string, any>>({
       storage.set(`${tableKey}:sizes`, nextAutoSizes)
       return nextAutoSizes
     })
-  }, [autoFitEnabled, beautifyJSON, columnsProp, data, tableKey])
+  }, [autoFitEnabled, allColumns, beautifyJSON, data, tableKey])
 
   // Manual mode still gets a small one-time sizing pass from the first few rows
   // so it does not start with unusably narrow columns on a fresh table.
   useEffect(() => {
-    if (autoFitEnabled || !columnsProp.length) {
+    if (autoFitEnabled || !allColumns.length) {
       return
     }
 
     const nextManualSizes = computeManualModeStartingSizes(
-      columnsProp,
+      allColumns,
       data ?? [],
       beautifyJSON
     )
@@ -598,7 +876,7 @@ export default function GenericTable<TData extends Record<string, any>>({
       storage.set(`${tableKey}:sizes`, merged)
       return merged
     })
-  }, [autoFitEnabled, beautifyJSON, columnsProp, data, tableKey])
+  }, [autoFitEnabled, allColumns, beautifyJSON, data, tableKey])
 
   const table = useReactTable({
     data: data ?? [],
@@ -663,6 +941,48 @@ export default function GenericTable<TData extends Record<string, any>>({
     })
   }
 
+  const toggleColumnVisibility = (columnId: string) => {
+    setHiddenColumns(prev => (
+      prev.includes(columnId)
+        ? prev.filter(id => id !== columnId)
+        : [...prev, columnId]
+    ))
+  }
+
+  const removeCustomColumn = (columnId: string) => {
+    setCustomColumns(prev => prev.filter(column => column.id !== columnId))
+  }
+
+  const addCustomColumn = (column: { label: string; path: string }) => {
+    const nextId = buildCustomColumnId(column.path)
+    const trimmedLabel = column.label.trim()
+    const trimmedPath = column.path.trim()
+
+    if (!trimmedPath) {
+      return
+    }
+
+    if (allColumnIds.includes(nextId) || customColumns.some(existing => existing.path === trimmedPath)) {
+      toast.error('That custom column already exists')
+      return
+    }
+
+    if (columns.some(existing => getColumnId(existing) === trimmedPath)) {
+      toast.error('That path already exists as a column')
+      return
+    }
+
+    setCustomColumns(prev => [
+      ...prev,
+      {
+        id: nextId,
+        label: trimmedLabel || trimmedPath,
+        path: trimmedPath,
+      },
+    ])
+    setIsAddColumnOpen(false)
+  }
+
   // Persist on changes
   useEffect(() => { storage.set(`${tableKey}:sorting`, sorting) }, [tableKey, sorting])
   useEffect(() => { storage.set(`${tableKey}:filters`, columnFilters) }, [tableKey, columnFilters])
@@ -670,6 +990,7 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:order`, columnOrder) }, [tableKey, columnOrder])
   useEffect(() => { storage.set(`${tableKey}:sizes`, columnSizing) }, [tableKey, columnSizing])
   useEffect(() => { storage.set(`${tableKey}:hiddenColumns`, hiddenColumns) }, [tableKey, hiddenColumns])
+  useEffect(() => { storage.set(`${tableKey}:customColumns`, customColumns) }, [tableKey, customColumns])
   useEffect(() => { storage.set(`${tableKey}:autoFit`, autoFitEnabled) }, [autoFitEnabled, tableKey])
 
   useEffect(() => {
@@ -719,84 +1040,138 @@ export default function GenericTable<TData extends Record<string, any>>({
             <div className="text-xs text-gray-500 dark:text-gray-400">
               Rows: {data?.length ?? 0}
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="dropdown-toggle">
-                  <Cog width={18} height={18} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                  align="end"
-                  className="w-56 border-gray-200 bg-white p-2 text-gray-700 dark:border-gray-800 dark:bg-gray-dark dark:text-gray-300"
-              >
-                <DropdownMenuItem
-                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
-                    onSelect={() => setBeautifyJSON(v => !v)}
+            <div className="flex items-center gap-1">
+              <Popover open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
+                <PopoverTrigger asChild>
+                  <button type="button" className="dropdown-toggle">
+                    <Plus width={18} height={18} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                    align="end"
+                    className="w-80 border border-gray-200 bg-white p-3 text-gray-700 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                    onOpenAutoFocus={(event) => event.preventDefault()}
                 >
-                  <span className="flex-1">Beautify JSON</span>
-                  {beautifyJSON ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
-                    onSelect={() => setAutoFitEnabled(value => !value)}
+                  <CustomColumnBuilder
+                      rows={data}
+                      onAdd={addCustomColumn}
+                      onCancel={() => setIsAddColumnOpen(false)}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="dropdown-toggle">
+                    <Cog width={18} height={18} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                    align="end"
+                    className="w-56 border border-gray-200 bg-white p-2 text-gray-700 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
                 >
-                  <span className="flex-1 whitespace-nowrap">Auto-Fit Columns</span>
-                  {autoFitEnabled ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
-                </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300 dark:data-[state=open]:bg-white/5 dark:data-[state=open]:text-gray-300">
-                    Columns
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-800 dark:bg-gray-dark dark:text-gray-300">
-                    {columnOrder.map((columnId) => (
-                        <DropdownMenuCheckboxItem
-                            key={columnId}
-                            checked={!hiddenColumnSet.has(columnId)}
-                            className="rounded-lg focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
-                            onSelect={(event) => event.preventDefault()}
-                            onCheckedChange={(checked) => {
-                              setHiddenColumns(prev => (
-                                checked
-                                  ? prev.filter(id => id !== columnId)
-                                  : [...prev, columnId]
-                              ))
-                            }}
-                        >
-                          {columns.find(column => getColumnId(column) === columnId)?.header as React.ReactNode ?? columnId}
-                        </DropdownMenuCheckboxItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
-                <DropdownMenuItem
-                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
-                    onSelect={() => {
-                      setColumnFilters([])
-                      setBeautifyJSON(false)
-                      setActiveFilterColumnId(null)
-                      setSorting([])
-                      setColumnSizing({})
-                      setHiddenColumns([])
-                      setAutoFitEnabled(DEFAULT_AUTO_FIT_ENABLED)
-                      // clear persisted state
-                      storage.set(`${tableKey}:filters`, [])
-                      storage.set(`${tableKey}:beautify`, false)
-                      storage.set(`${tableKey}:sorting`, [])
-                      storage.set(`${tableKey}:sizes`, {})
-                      storage.set(`${tableKey}:hiddenColumns`, [])
-                      storage.set(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
-                    }}
-                >
-                  Reset
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                    className="rounded-lg px-4 py-2 text-red-500 focus:bg-gray-100 focus:text-gray-700 dark:text-red-400 dark:focus:bg-white/5 dark:focus:text-gray-300"
-                    onSelect={() => removeContainer(container)}
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <DropdownMenuItem
+                      className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                      onSelect={() => setBeautifyJSON(v => !v)}
+                  >
+                    <span className="flex-1">Beautify JSON</span>
+                    {beautifyJSON ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                      className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                      onSelect={() => setAutoFitEnabled(value => !value)}
+                  >
+                    <span className="flex-1 whitespace-nowrap">Auto-Fit Columns</span>
+                    {autoFitEnabled ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
+                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300 dark:data-[state=open]:bg-white/5 dark:data-[state=open]:text-gray-300">
+                      Columns
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-80 space-y-2 border border-gray-200 bg-white p-2 text-gray-700 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                      <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                        {allColumns.length === 0 ? (
+                            <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                              No columns available yet.
+                            </div>
+                        ) : (
+                            columnOrder
+                              .filter(columnId => allColumnIds.includes(columnId))
+                              .map((columnId) => {
+                                const column = columnLookup.get(columnId)
+                                if (!column) return null
+
+                                const isVisible = !hiddenColumnSet.has(columnId)
+                                const isCustom = customColumnIdSet.has(columnId)
+                                const label = String((column as any).header || columnId)
+
+                                return (
+                                    <div
+                                        key={columnId}
+                                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-white/5"
+                                    >
+                                      <button
+                                          type="button"
+                                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                          onClick={() => toggleColumnVisibility(columnId)}
+                                        >
+                                        <span className="flex h-4 w-4 items-center justify-center text-green-600 dark:text-green-400">
+                                          {isVisible ? <Check className="h-4 w-4" /> : null}
+                                        </span>
+                                        <span className="truncate">{label}</span>
+                                      </button>
+                                      {isCustom ? (
+                                          <button
+                                              type="button"
+                                              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-200 hover:text-red-500 dark:hover:bg-white/10"
+                                              onClick={(event) => {
+                                                event.stopPropagation()
+                                                removeCustomColumn(columnId)
+                                              }}
+                                            >
+                                            <X className="h-3.5 w-3.5" />
+                                          </button>
+                                      ) : null}
+                                    </div>
+                                )
+                              })
+                        )}
+                      </div>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                  <DropdownMenuItem
+                      className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                      onSelect={() => {
+                        setColumnFilters([])
+                        setBeautifyJSON(false)
+                        setActiveFilterColumnId(null)
+                        setSorting([])
+                        setColumnSizing({})
+                        setHiddenColumns([])
+                        setCustomColumns([])
+                        setAutoFitEnabled(DEFAULT_AUTO_FIT_ENABLED)
+                        // clear persisted state
+                        storage.set(`${tableKey}:filters`, [])
+                        storage.set(`${tableKey}:beautify`, false)
+                        storage.set(`${tableKey}:sorting`, [])
+                        storage.set(`${tableKey}:sizes`, {})
+                        storage.set(`${tableKey}:hiddenColumns`, [])
+                        storage.set(`${tableKey}:customColumns`, [])
+                        storage.set(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
+                      }}
+                  >
+                    Reset
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                      className="rounded-lg px-4 py-2 text-red-500 focus:bg-gray-100 focus:text-gray-700 dark:text-red-400 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                      onSelect={() => removeContainer(container)}
+                  >
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           <div className="relative min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
