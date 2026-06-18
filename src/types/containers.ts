@@ -11,6 +11,36 @@ export enum ContainerType {
 
 export const DEFAULT_TARGET_MAX_VALUE = 100
 
+export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
+  [ContainerType.graph]: 'Graph',
+  [ContainerType.table]: 'Table',
+  [ContainerType.event]: 'Event',
+  [ContainerType.target]: 'Target',
+  [ContainerType.state]: 'State',
+  [ContainerType.logs]: 'Logs',
+  [ContainerType.statefulEvent]: 'Stateful Event',
+  [ContainerType.action]: 'Action',
+}
+
+export const CONTAINER_TYPE_DESCRIPTIONS: Record<ContainerType, string> = {
+  [ContainerType.graph]: 'Plots one or more event values over time so trends are easy to spot.',
+  [ContainerType.table]: 'Shows incoming event records in a sortable table for quick inspection.',
+  [ContainerType.event]: 'Displays the latest occurrence of a selected event.',
+  [ContainerType.target]: 'Tracks a numeric value against a maximum and shows progress as a gauge.',
+  [ContainerType.state]: 'Highlights the current value of a selected event field.',
+  [ContainerType.logs]: 'Streams collected logs in one scrollable view.',
+  [ContainerType.statefulEvent]: 'Marks whether a state is active based on separate start and stop events.',
+  [ContainerType.action]: 'Sends an HTTP request so the dashboard can trigger an external action.',
+}
+
+export function getContainerTypeLabel(type: ContainerType) {
+  return CONTAINER_TYPE_LABELS[type]
+}
+
+export function getContainerTypeDescription(type: ContainerType) {
+  return CONTAINER_TYPE_DESCRIPTIONS[type]
+}
+
 export function DefaultContainerSize(type: ContainerType) {
   switch (type) {
     case ContainerType.graph: return {x: 0, y: 0, w: 6, h: 5}
