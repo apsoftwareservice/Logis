@@ -70,7 +70,7 @@ export function EventParameterConfigurationPopover({index, currentEvent, current
           { event && (
             <>
               <div className="grid gap-2">
-                <Label>Value</Label>
+                <Label>Display value</Label>
                 { options && (
                   <NestedSelect value={value} data={ options } onSelect={ (value) => {
                     setValue(value)

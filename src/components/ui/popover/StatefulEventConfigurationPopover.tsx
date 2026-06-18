@@ -86,7 +86,7 @@ export function StatefulEventConfigurationPopover({index, currentStartEvent, cur
           { startEvent && (
               <>
                 <div className="grid gap-2 pt-2">
-                  <Label className="text-gray-500">Value (optional)</Label>
+                  <Label className="text-gray-500">Display value (optional)</Label>
                   { options && (
                       <NestedSelect value={parameterKey} data={ options } onSelect={ (value) => {
                         setParameterKey(value)
