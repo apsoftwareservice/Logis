@@ -2,26 +2,29 @@
 import { ApexOptions } from "apexcharts"
 
 import dynamic from "next/dynamic"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import BaseView from '@/components/dashboard/BaseView'
 import { DashboardContainer, DEFAULT_TARGET_MAX_VALUE, TargetModel } from '@/types/containers'
 import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import { getNestedValue } from '@/lib/utils'
-import {randomUUID} from "@/lib/crypto-util";
+import { randomUUID } from "@/lib/crypto-util"
 
-// Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false
 })
 
 export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
   const {index, registerObserver, setContainer} = useDashboard()
-  const [ series, setSeries ] = useState([ 0 ])
-  const isOverMax = series[0] > 100
+  const [ percentage, setPercentage ] = useState(0)
+
+  const visualPercentage = Math.min(Math.max(percentage, 0), 100)
+  const isOverMax = percentage > 100
   const gaugeColor = isOverMax ? "#EF4444" : "#465FFF"
-  const options: ApexOptions = {
+  const series = [ visualPercentage ]
+
+  const options: ApexOptions = useMemo(() => ({
     colors: [ gaugeColor ],
     chart: {
       fontFamily: "Outfit, sans-serif",
@@ -41,22 +44,14 @@ export default function TargetView({container}: { container: DashboardContainer<
         track: {
           background: "#E4E7EC",
           strokeWidth: "100%",
-          margin: 5 // margin is in pixels
+          margin: 5
         },
         dataLabels: {
           name: {
             show: false
           },
           value: {
-            fontSize: "30px",
-            fontWeight: "600",
-            offsetY: -40,
-            color: "#1D2939",
-            formatter: function (val) {
-              const num = typeof val === 'number' ? val : parseFloat(String(val))
-              if (isNaN(num)) return '0%'
-              return `${ num.toFixed(2) }%`
-            }
+            show: false
           }
         }
       }
@@ -69,24 +64,24 @@ export default function TargetView({container}: { container: DashboardContainer<
       lineCap: "round"
     },
     labels: [ 'Progress' ]
-  }
+  }), [ gaugeColor, percentage ])
 
   useEffect(() => {
     if(!index?.current) return
-    registerObserver(eventObserver(container.data.event, index.current!))
+    registerObserver(eventObserver(container.data.event, index.current))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ container, index?.current ])
 
-  const eventObserver = (event: string, index: EventTypeIndex): Observer => ({
+  const eventObserver = (event: string, eventIndex: EventTypeIndex): Observer => ({
     id: randomUUID(),
     types: [ event ],
     renderAt: (timestampMs: number) => {
-      const eventBucket = index.getBucket(event)
+      const eventBucket = eventIndex.getBucket(event)
 
       if (!eventBucket) return 0
 
-      const {timestampMs: _, data} = eventBucket.getLastEventAtOrBefore(timestampMs) ??
-      {timestampMs: new Float64Array(0), data: []}
+      const { data } = eventBucket.getLastEventAtOrBefore(timestampMs) ??
+      { timestampMs: new Float64Array(0), data: [] }
 
       if (data && container.data.parameterKey) {
         const rawValue = getNestedValue(data as any, container.data.parameterKey)
@@ -94,14 +89,12 @@ export default function TargetView({container}: { container: DashboardContainer<
         const maxValue = container.data.maxValue || DEFAULT_TARGET_MAX_VALUE
 
         if (Number.isFinite(value) && Number.isFinite(maxValue) && maxValue > 0) {
-          setSeries([ (value / maxValue) * 100 ])
+          setPercentage((value / maxValue) * 100)
           return
         }
-
-        setSeries([ 0 ])
-      } else {
-        setSeries([0])
       }
+
+      setPercentage(0)
     }
   })
 
@@ -116,6 +109,14 @@ export default function TargetView({container}: { container: DashboardContainer<
               type="radialBar"
               height={ 330 }
             />
+          </div>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span
+              className="text-[30px] font-semibold text-[#1D2939] dark:text-white/90"
+              style={ { transform: 'translateY(10px)' } }
+            >
+              { `${ percentage.toFixed(2) }%` }
+            </span>
           </div>
         </div>
       </div>
