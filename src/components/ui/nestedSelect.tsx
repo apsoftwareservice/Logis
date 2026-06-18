@@ -1,9 +1,16 @@
-// Import the necessary components and hooks
-import React, { useMemo, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
+import React, { useState } from 'react'
+import { Check, ChevronRight } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown/dropdown-menu'
+import { cn } from '@/lib/utils'
 
-// Updated types from step 1
 export type NestedObject = {
   [key: string]: string | number | boolean | NestedObject | NestedObject[] | string[] | number[] | boolean[];
 };
@@ -27,94 +34,122 @@ interface NestedSelectProps<T extends NestedObject> {
   prefix?: string;
 }
 
-function NestedSelect<T extends NestedObject>({data, value, onSelect, prefix = ''}: NestedSelectProps<T>) {
-  const [ selectedValue, setSelectedValue ] = useState<string | null>(null)
+function getPathLabel(prefix: string, key: string, isArray: boolean) {
+  return isArray
+    ? `${prefix}[${key}]`
+    : prefix ? `${prefix}.${key}` : key
+}
 
-  // Helpers to derive the pre-selected key from `value` (a full dot/bracket path) and current `prefix`
-  const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-
-  const derivedSelectedKey = useMemo(() => {
-    if (!value || typeof value !== 'string') return null
-
-    // Root or nested: figure out the next segment after `prefix`
-    const pref = prefix || ''
-    const isPrefRoot = pref.length === 0
-
-    if (Array.isArray(data)) {
-      // Expect something like `${prefix}[<index>]...` or `[<index>]...` at root
-      const re = new RegExp(`^${isPrefRoot ? '' : escapeRegex(pref)}\\[(\\d+)\\]`)
-      const m = value.match(re)
-      if (m) return m[1] // index as string
-      return null
-    } else {
-      // Objects: at root, take first token until '.' or '['; otherwise, expect `${prefix}.<token>`
-      if (isPrefRoot) {
-        const m = value.match(/^[^.\[]+/)
-        return m ? m[0] : null
-      } else {
-        const re = new RegExp(`^${escapeRegex(pref)}\\.([^.\[]+)`)
-        const m = value.match(re)
-        return m ? m[1] : null
-      }
-    }
-  }, [ value, prefix, /* eslint-disable-line react-hooks/exhaustive-deps */ ])
-
-  // If the current data is an array, we'll render its items.
+function NestedLevel<T extends NestedObject>({
+  data,
+  prefix = '',
+  depth = 0,
+  onSelect,
+  currentValue,
+}: {
+  data: T | T[] | string[] | number[] | boolean[]
+  prefix?: string
+  depth?: number
+  onSelect: (path: string) => void
+  currentValue?: string
+}) {
   const isArray = Array.isArray(data)
   const keys = isArray ? (data as any[]).map((_, index) => index.toString()) : Object.keys(data as T)
 
-  const activeKey = selectedValue ?? derivedSelectedKey
-  const nextData = activeKey != null
-    ? (isArray ? (data as any[])[Number(activeKey)] : (data as T)[activeKey as keyof T])
-    : undefined
+  const getValueAtKey = (key: string) => (
+    isArray
+      ? (data as any[])[Number(key)]
+      : (data as T)[key as keyof T]
+  )
 
-  const nextIsObject = typeof nextData === 'object' && nextData !== null
+  const isLeaf = (key: string) => {
+    const value = getValueAtKey(key)
+    return typeof value !== 'object' || value === null
+  }
 
   return (
-    <Select
-      value={ activeKey ?? undefined }
-      onValueChange={ (value: string) => {
-        setSelectedValue(value)
-        const fullPath = isArray
-          ? `${ prefix }[${ value }]`
-          : prefix ? `${ prefix }.${ value }` : `${ value }`
+    <>
+      {keys.map((key) => {
+        const value = getValueAtKey(key)
+        const fullPath = getPathLabel(prefix, key, isArray)
+        const leaf = isLeaf(key)
+        const isSelected = currentValue === fullPath
+        const displayLabel = isArray ? fullPath : String(key)
 
-        const selectedNext = isArray ? (data as any[])[Number(value)] : (data as T)[value as keyof T]
-
-        // Check if the next level is an object or an array.
-        if (typeof selectedNext !== 'object' || selectedNext === null) {
-          onSelect(fullPath as DotPath<T>)
+        if (!leaf) {
+          return (
+            <DropdownMenuSub key={ fullPath }>
+              <DropdownMenuSubTrigger
+                className={ cn(
+                  "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+                  depth > 0 && "pl-8"
+                ) }
+                onClick={ () => onSelect(fullPath) }
+              >
+                <span className="min-w-0 flex-1 truncate">{ displayLabel }</span>
+                {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent
+                className="max-h-96 overflow-y-auto border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-900"
+              >
+                <NestedLevel
+                  data={ value as any }
+                  prefix={ fullPath }
+                  depth={ depth + 1 }
+                  onSelect={ onSelect }
+                  currentValue={ currentValue }
+                />
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )
         }
-      } }
-    >
-      <SelectTrigger className="border rounded-md border-gray-600 text-sm bg-white dark:bg-gray-900 min-w-40">
-        <SelectValue placeholder="Choose value"/>
-      </SelectTrigger>
-      <SelectContent className={ 'bg-white cursor-pointer' }>
-        { keys.map((key) => (
-          <SelectItem key={ String(key) } value={ String(key) }>
-            <div className="flex items-center justify-between cursor-pointer">
-              <span>{ String(key) }</span>
-              { (isArray
-                ? typeof (data as any[])[Number(key)] === 'object' && (data as any[])[Number(key)] !== null
-                : typeof (data as T)[key as keyof T] === 'object' && (data as T)[key as keyof T] !== null) && (
-                <ChevronRight className="ml-2 h-4 w-4"/>
-              ) }
-            </div>
-          </SelectItem>
-        )) }
-      </SelectContent>
-      {/* Recursively render another NestedSelect */ }
-      { activeKey != null && nextIsObject && (
-        <NestedSelect
-          // @ts-expect-error recursive narrowing
-          data={ nextData as NestedObject }
-          value={ value }
-          onSelect={ onSelect }
-          prefix={ isArray ? `${ prefix }[${ activeKey }]` : prefix ? `${ prefix }.${ String(activeKey) }` : String(activeKey) }
+
+        return (
+          <DropdownMenuItem
+            key={ fullPath }
+            className={ cn(
+              "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground",
+              depth > 0 && "pl-8"
+            ) }
+            onSelect={ () => onSelect(fullPath) }
+          >
+            <span className="min-w-0 flex-1 truncate">{ displayLabel }</span>
+            {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
+          </DropdownMenuItem>
+        )
+      })}
+    </>
+  )
+}
+
+function NestedSelect<T extends NestedObject>({data, value, onSelect, prefix = ''}: NestedSelectProps<T>) {
+  const [ open, setOpen ] = useState(false)
+  const label = value || 'Choose value'
+  const handleSelect = (path: string) => {
+    onSelect(path as DotPath<T>)
+    setOpen(false)
+  }
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-full items-center justify-between rounded-md border border-gray-600 bg-white px-3 text-sm text-gray-900 shadow-sm outline-none transition-colors hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+        >
+          <span className="truncate">{label}</span>
+          <ChevronRight className="h-4 w-4 rotate-90 opacity-50" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="max-h-96 min-w-44 overflow-hidden border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-900" align="start">
+        <NestedLevel
+          data={ data }
+          prefix={ prefix }
+          onSelect={ handleSelect }
+          currentValue={ value }
         />
-      ) }
-    </Select>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

@@ -6,6 +6,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getFirstSeenObjectKeys(rows: object[]): string[] {
+  const seen = new Set<string>()
+  const keys: string[] = []
+
+  rows.forEach((row) => {
+    Object.keys(row as Record<string, unknown>).forEach((key) => {
+      if (!seen.has(key)) {
+        seen.add(key)
+        keys.push(key)
+      }
+    })
+  })
+
+  return keys
+}
+
 export function capitalize(str: string) {
   if (str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -160,6 +176,22 @@ export function toMs(v: unknown): number | null {
   }
   const parsed = Date.parse(String(v))
   return Number.isFinite(parsed) ? parsed : null
+}
+
+export function formatDisplayValue(value: unknown): string {
+  if (value == null) return '-'
+  if (typeof value === 'string') return value || '-'
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2)
+    } catch {
+      return String(value)
+    }
+  }
+
+  return String(value)
 }
 
 export function seekValueToEpochMs(value: number, startTime: number, endTime: number) {

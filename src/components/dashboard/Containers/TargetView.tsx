@@ -8,7 +8,7 @@ import { DashboardContainer, TargetModel } from '@/types/containers'
 import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
-import { getNestedValue } from '@/lib/utils'
+import { getNestedValue, parseNumeric } from '@/lib/utils'
 import {randomUUID} from "@/lib/crypto-util";
 
 // Dynamically import the ReactApexChart component
@@ -88,11 +88,8 @@ export default function TargetView({container}: { container: DashboardContainer<
 
       if (data && container.data.parameterKey) {
         const value = getNestedValue(data as any, container.data.parameterKey)
-        if (value) {
-          setSeries([ (value / container.data.maxValue) * 100 ])
-        } else {
-          setSeries([0])
-        }
+        const numericValue = parseNumeric(value)
+        setSeries([ numericValue != null ? (numericValue / container.data.maxValue) * 100 : 0 ])
       } else {
         setSeries([0])
       }
