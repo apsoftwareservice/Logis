@@ -24,9 +24,18 @@ import {
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Check, Cog } from 'lucide-react'
-import { Dropdown } from '@/components/ui/dropdown/Dropdown'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown/dropdown-menu'
 import { DashboardContainer } from '@/types/containers'
-import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
 import { useDashboard } from '@/context/DashboardContext'
 
 const DEFAULT_AUTO_FIT_ENABLED = false
@@ -324,7 +333,6 @@ export default function GenericTable<TData extends Record<string, any>>({
   followLogs: boolean
 }) {
   const { removeContainer } = useDashboard()
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false)
 
   // A stable key per table instance for persistence namespaces
   const tableKey = useMemo(() => `table:${container?.id ?? 'generic'}`, [container?.id])
@@ -337,6 +345,9 @@ export default function GenericTable<TData extends Record<string, any>>({
   const [columnOrder, setColumnOrder] = useState<string[]>(() => storage.get<string[]>(`${tableKey}:order`, []))
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
       () => storage.get<Record<string, number>>(`${tableKey}:sizes`, {})
+  )
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>(
+      () => storage.get<string[]>(`${tableKey}:hiddenColumns`, [])
   )
   const [autoFitEnabled, setAutoFitEnabled] = useState<boolean>(
       () => storage.get<boolean>(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
@@ -388,7 +399,23 @@ export default function GenericTable<TData extends Record<string, any>>({
       storage.set(`${tableKey}:sizes`, next)
       return next
     })
+
+    setHiddenColumns(prev => {
+      const next = prev.filter(id => ids.includes(id))
+      storage.set(`${tableKey}:hiddenColumns`, next)
+      return next
+    })
   }, [columnsProp, beautifyJSON, tableKey])
+
+  const hiddenColumnSet = useMemo(() => new Set(hiddenColumns), [hiddenColumns])
+  const visibleColumns = useMemo(
+      () => columns.filter(column => !hiddenColumnSet.has(getColumnId(column) ?? '')),
+      [columns, hiddenColumnSet]
+  )
+  const visibleColumnOrder = useMemo(
+      () => columnOrder.filter(id => !hiddenColumnSet.has(id)),
+      [columnOrder, hiddenColumnSet]
+  )
 
   // Auto-fit mode: while enabled, widths always follow the longest value in the dataset (max width: AUTO_FIT_MAX_WIDTH)
   useEffect(() => {
@@ -438,11 +465,11 @@ export default function GenericTable<TData extends Record<string, any>>({
 
   const table = useReactTable({
     data: data ?? [],
-    columns,
+    columns: visibleColumns,
     state: {
       sorting,
       columnFilters,
-      columnOrder,
+      columnOrder: visibleColumnOrder,
       columnSizing,
       // @ts-expect-error custom UI state
       showFilter,
@@ -476,11 +503,18 @@ export default function GenericTable<TData extends Record<string, any>>({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
-    const oldIndex = columnOrder.findIndex(id => id === active.id)
-    const newIndex = columnOrder.findIndex(id => id === over.id)
+    const oldIndex = visibleColumnOrder.findIndex(id => id === active.id)
+    const newIndex = visibleColumnOrder.findIndex(id => id === over.id)
     if (oldIndex === -1 || newIndex === -1) return
-    const newOrder = arrayMove(columnOrder, oldIndex, newIndex)
-    setColumnOrder(newOrder)
+    const nextVisibleOrder = arrayMove(visibleColumnOrder, oldIndex, newIndex)
+    setColumnOrder(prev => {
+      let visibleIndex = 0
+      return prev.map(id => (
+        hiddenColumnSet.has(id)
+          ? id
+          : nextVisibleOrder[visibleIndex++]
+      ))
+    })
   }
 
   // Persist on changes
@@ -490,12 +524,16 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:beautify`, beautifyJSON) }, [tableKey, beautifyJSON])
   useEffect(() => { storage.set(`${tableKey}:order`, columnOrder) }, [tableKey, columnOrder])
   useEffect(() => { storage.set(`${tableKey}:sizes`, columnSizing) }, [tableKey, columnSizing])
+  useEffect(() => { storage.set(`${tableKey}:hiddenColumns`, hiddenColumns) }, [tableKey, hiddenColumns])
   useEffect(() => { storage.set(`${tableKey}:autoFit`, autoFitEnabled) }, [autoFitEnabled, tableKey])
 
   useEffect(() => {
     if (!followLogs) return
     rowVirtualizer.scrollToIndex(data.length, { align: "start" })
   }, [data, followLogs, rowVirtualizer]);
+
+  const hasNoRows = data.length === 0
+  const hasNoVisibleColumns = visibleColumns.length === 0
 
   return (
       <div className="h-full flex min-h-0">
@@ -504,43 +542,70 @@ export default function GenericTable<TData extends Record<string, any>>({
             <div className="text-xs text-gray-500 dark:text-gray-400">
               Rows: {data?.length ?? 0}
             </div>
-            <div>
-              <button onClick={() => setIsDropdownOpen(true)} className="dropdown-toggle">
-                <Cog width={18} height={18} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
-              </button>
-              <Dropdown
-                  isOpen={isDropdownOpen}
-                  onClose={() => setIsDropdownOpen(false)}
-                  className="w-50 p-2"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="dropdown-toggle">
+                  <Cog width={18} height={18} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                  align="end"
+                  className="w-56 border-gray-200 bg-white p-2 text-gray-700 dark:border-gray-800 dark:bg-gray-dark dark:text-gray-300"
               >
-                <div
-                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
-                    onClick={() => setShowFilter(!showFilter)}
+                <DropdownMenuItem
+                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                    onSelect={() => setShowFilter(!showFilter)}
                 >
                   Use Filter
-                </div>
-                <div
-                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
-                    onClick={() => setBeautifyJSON(v => !v)}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                    onSelect={() => setBeautifyJSON(v => !v)}
                 >
                   <span className="flex-1">Beautify JSON</span>
                   {beautifyJSON ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
-                </div>
-                <div
-                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
-                    onClick={() => setAutoFitEnabled(value => !value)}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                    onSelect={() => setAutoFitEnabled(value => !value)}
                 >
                   <span className="flex-1 whitespace-nowrap">Auto-Fit Columns</span>
                   {autoFitEnabled ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" /> : null}
-                </div>
-                <div
-                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
-                    onClick={() => {
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300 dark:data-[state=open]:bg-white/5 dark:data-[state=open]:text-gray-300">
+                    Columns
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="max-h-72 w-56 overflow-y-auto border-gray-200 bg-white p-1 text-gray-700 dark:border-gray-800 dark:bg-gray-dark dark:text-gray-300">
+                    {columnOrder.map((columnId) => (
+                        <DropdownMenuCheckboxItem
+                            key={columnId}
+                            checked={!hiddenColumnSet.has(columnId)}
+                            className="rounded-lg focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                            onSelect={(event) => event.preventDefault()}
+                            onCheckedChange={(checked) => {
+                              setHiddenColumns(prev => (
+                                checked
+                                  ? prev.filter(id => id !== columnId)
+                                  : [...prev, columnId]
+                              ))
+                            }}
+                        >
+                          {columns.find(column => getColumnId(column) === columnId)?.header as React.ReactNode ?? columnId}
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                <DropdownMenuItem
+                    className="rounded-lg px-4 py-2 focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                    onSelect={() => {
                       setColumnFilters([])
                       setBeautifyJSON(false)
                       setShowFilter(false)
                       setSorting([])
                       setColumnSizing({})
+                      setHiddenColumns([])
                       setAutoFitEnabled(DEFAULT_AUTO_FIT_ENABLED)
                       // clear persisted state
                       storage.set(`${tableKey}:filters`, [])
@@ -548,31 +613,34 @@ export default function GenericTable<TData extends Record<string, any>>({
                       storage.set(`${tableKey}:showFilter`, false)
                       storage.set(`${tableKey}:sorting`, [])
                       storage.set(`${tableKey}:sizes`, {})
+                      storage.set(`${tableKey}:hiddenColumns`, [])
                       storage.set(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
                     }}
                 >
                   Reset
-                </div>
-                <DropdownItem
-                    onItemClick={() => removeContainer(container)}
-                    className="flex w-full font-normal text-left text-red-500 rounded-lg hover:bg-gray-100 hover:text-gray-700 dark:text-red-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    className="rounded-lg px-4 py-2 text-red-500 focus:bg-gray-100 focus:text-gray-700 dark:text-red-400 dark:focus:bg-white/5 dark:focus:text-gray-300"
+                    onSelect={() => removeContainer(container)}
                 >
                   Delete
-                </DropdownItem>
-              </Dropdown>
-            </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
             <div ref={parentRef} className="h-full overflow-auto" style={{ scrollbarGutter: 'stable' }}>
-              {data.length === 0 ? (
+              {hasNoRows || hasNoVisibleColumns ? (
                 <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center">
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                      No data yet
+                      {hasNoRows ? 'No logs yet' : 'No visible columns'}
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Make sure you are in a live session and send data/load a file to populate this table
+                      {hasNoRows
+                        ? 'Make sure you are in a live session or load a file to populate this table.'
+                        : 'Open the gear menu and re-enable columns from the Columns list.'}
                     </div>
                   </div>
                 </div>
@@ -580,7 +648,7 @@ export default function GenericTable<TData extends Record<string, any>>({
               <div className="w-full">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <div className="sticky top-0 z-10 dark:bg-gray-900 bg-gray-200 border-b border-gray-300 dark:border-gray-600 flex">
-                    <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
+                    <SortableContext items={visibleColumnOrder} strategy={horizontalListSortingStrategy}>
                       {table.getHeaderGroups().map(headerGroup => (
                           headerGroup.headers.map((header) => (
                               <SortableHeader key={header.id} header={header} table={table} autoFitEnabled={autoFitEnabled} />
