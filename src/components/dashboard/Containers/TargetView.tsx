@@ -19,8 +19,10 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
 export default function TargetView({container}: { container: DashboardContainer<TargetModel> }) {
   const {index, registerObserver, setContainer} = useDashboard()
   const [ series, setSeries ] = useState([ 0 ])
+  const isOverMax = series[0] > 100
+  const gaugeColor = isOverMax ? "#EF4444" : "#465FFF"
   const options: ApexOptions = {
-    colors: [ "#465FFF" ],
+    colors: [ gaugeColor ],
     chart: {
       fontFamily: "Outfit, sans-serif",
       type: "radialBar",
@@ -61,7 +63,7 @@ export default function TargetView({container}: { container: DashboardContainer<
     },
     fill: {
       type: "solid",
-      colors: [ "#465FFF" ]
+      colors: [ gaugeColor ]
     },
     stroke: {
       lineCap: "round"
