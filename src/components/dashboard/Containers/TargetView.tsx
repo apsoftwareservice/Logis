@@ -2,9 +2,9 @@
 import { ApexOptions } from "apexcharts"
 
 import dynamic from "next/dynamic"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import BaseView from '@/components/dashboard/BaseView'
-import { DashboardContainer, TargetModel } from '@/types/containers'
+import { DashboardContainer, DEFAULT_TARGET_MAX_VALUE, TargetModel } from '@/types/containers'
 import { TargetConfigurationPopover } from '@/components/ui/popover/TargetConfigurationPopover'
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
@@ -87,12 +87,16 @@ export default function TargetView({container}: { container: DashboardContainer<
       {timestampMs: new Float64Array(0), data: []}
 
       if (data && container.data.parameterKey) {
-        const value = getNestedValue(data as any, container.data.parameterKey)
-        if (value) {
-          setSeries([ (value / container.data.maxValue) * 100 ])
-        } else {
-          setSeries([0])
+        const rawValue = getNestedValue(data as any, container.data.parameterKey)
+        const value = typeof rawValue === 'number' ? rawValue : Number(rawValue)
+        const maxValue = container.data.maxValue || DEFAULT_TARGET_MAX_VALUE
+
+        if (Number.isFinite(value) && Number.isFinite(maxValue) && maxValue > 0) {
+          setSeries([ (value / maxValue) * 100 ])
+          return
         }
+
+        setSeries([ 0 ])
       } else {
         setSeries([0])
       }
