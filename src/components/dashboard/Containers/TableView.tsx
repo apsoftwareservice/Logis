@@ -3,12 +3,13 @@
 import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import React, {useEffect, useMemo, useState} from 'react'
-import { DashboardContainer, LogsModel, TableModel } from '@/types/containers'
+import { DashboardContainer, TableModel } from '@/types/containers'
 import { EventConfigurationPopover } from '@/components/ui/popover/EventConfigurationPopover'
 import BaseView from '@/components/dashboard/BaseView'
 import { ColumnDef } from '@tanstack/react-table'
 import GenericTable from '@/components/tables/GenericTable'
 import { randomUUID } from "@/lib/crypto-util"
+import { getFirstSeenObjectKeys } from '@/lib/utils'
 
 export default function TableView({container}: { container: DashboardContainer<TableModel> }) {
   const {registerObserver, index, followLogs, setContainer} = useDashboard()
@@ -44,13 +45,10 @@ export default function TableView({container}: { container: DashboardContainer<T
       return []
     }
 
-    const keys = Object.keys(item[0]) as (keyof LogsModel)[]
-
-    return keys.map(k => ({
+    return getFirstSeenObjectKeys(item).map((k) => ({
       accessorKey: k,
       header: k
     }))
-
   }, [ item ])
 
   return (

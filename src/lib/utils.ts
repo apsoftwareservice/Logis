@@ -6,6 +6,22 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getFirstSeenObjectKeys(rows: object[]): string[] {
+  const seen = new Set<string>()
+  const keys: string[] = []
+
+  rows.forEach((row) => {
+    Object.keys(row as Record<string, unknown>).forEach((key) => {
+      if (!seen.has(key)) {
+        seen.add(key)
+        keys.push(key)
+      }
+    })
+  })
+
+  return keys
+}
+
 export function capitalize(str: string) {
   if (str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
