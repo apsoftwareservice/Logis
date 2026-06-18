@@ -43,6 +43,7 @@ const AUTO_FIT_CHAR_WIDTH = 8
 const AUTO_FIT_CELL_PADDING = 48
 // Reserve space for the per-column search trigger and drag handle so the header text does not collide with them.
 const HEADER_CONTROL_SPACE = 52
+const AUTO_FOLLOW_BOTTOM_THRESHOLD = 24
 
 // Keep the width within the table's supported minimum and maximum bounds.
 function boundAutoFitWidth(width: number) {
@@ -475,6 +476,7 @@ export default function GenericTable<TData extends Record<string, any>>({
   )
 
   const parentRef = useRef<HTMLDivElement>(null)
+  const isAutoFollowingRef = useRef(followLogs)
 
   const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -623,9 +625,35 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:autoFit`, autoFitEnabled) }, [autoFitEnabled, tableKey])
 
   useEffect(() => {
-    if (!followLogs) return
-    rowVirtualizer.scrollToIndex(data.length, { align: "start" })
-  }, [data, followLogs, rowVirtualizer]);
+    isAutoFollowingRef.current = followLogs
+  }, [followLogs])
+
+  useEffect(() => {
+    const scrollElement = parentRef.current
+    if (!scrollElement) return
+
+    const handleScroll = () => {
+      const distanceFromBottom =
+        scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight
+
+      const nextAutoFollowing = followLogs && distanceFromBottom <= AUTO_FOLLOW_BOTTOM_THRESHOLD
+      isAutoFollowingRef.current = nextAutoFollowing
+    }
+
+    handleScroll()
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => scrollElement.removeEventListener('scroll', handleScroll)
+  }, [followLogs])
+
+  useLayoutEffect(() => {
+    if (!followLogs || !isAutoFollowingRef.current || data.length === 0) return
+
+    const scrollElement = parentRef.current
+    if (!scrollElement) return
+
+    scrollElement.scrollTop = scrollElement.scrollHeight
+  }, [data.length, followLogs])
 
   const visibleRows = table.getRowModel().rows
   const hasNoSourceData = data.length === 0
