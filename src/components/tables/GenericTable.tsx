@@ -3,6 +3,7 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  FilterFn,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -23,7 +24,8 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Check, Cog } from 'lucide-react'
+import { Check, Cog, Search } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DashboardContainer } from '@/types/containers'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
@@ -39,6 +41,8 @@ const AUTO_FIT_MAX_WIDTH = 1000
 const AUTO_FIT_CHAR_WIDTH = 8
 // Extra room for cell padding and table controls so content is not edge-to-edge.
 const AUTO_FIT_CELL_PADDING = 48
+// Reserve space for the per-column search trigger and drag handle so the header text does not collide with them.
+const HEADER_CONTROL_SPACE = 52
 
 // Keep the width within the table's supported minimum and maximum bounds.
 function boundAutoFitWidth(width: number) {
@@ -69,6 +73,17 @@ function stringifyCellValue(value: unknown, beautifyJSON = false): string {
   }
 
   return String(value)
+}
+
+const stringIncludesFilter: FilterFn<any> = (row, columnId, filterValue) => {
+  const rowValue = stringifyCellValue(row.getValue(columnId)).toLowerCase()
+  const searchValue = String(filterValue ?? '').trim().toLowerCase()
+
+  if (!searchValue) {
+    return true
+  }
+
+  return rowValue.includes(searchValue)
 }
 
 // Find the longest visible line in a possibly multi-line string.
@@ -109,7 +124,7 @@ function estimateColumnWidth<TData extends Record<string, any>>(
   }
 
   return boundAutoFitWidth(
-    longest * AUTO_FIT_CHAR_WIDTH + AUTO_FIT_CELL_PADDING
+    longest * AUTO_FIT_CHAR_WIDTH + AUTO_FIT_CELL_PADDING + HEADER_CONTROL_SPACE
   )
 }
 
@@ -180,8 +195,22 @@ const storage = {
 // ──────────────────────────────────────────────────────────────────────────────
 // Sortable header cell
 // ──────────────────────────────────────────────────────────────────────────────
-const SortableHeader = ({ header, table, autoFitEnabled }: any) => {
+const SortableHeader = ({
+  header,
+  autoFitEnabled,
+  activeFilterColumnId,
+  setActiveFilterColumnId,
+}: any) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: header.column.id })
+  const filterRef = useRef<HTMLDivElement | null>(null)
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null)
+  const popupRef = useRef<HTMLDivElement | null>(null)
+  const [isHintVisible, setIsHintVisible] = useState(false)
+  const [isDragHintVisible, setIsDragHintVisible] = useState(false)
+  const [popupStyle, setPopupStyle] = useState<React.CSSProperties | null>(null)
+  const isFilterOpen = activeFilterColumnId === header.column.id
+  const filterValue = String(header.column.getFilterValue() ?? '').trim()
+  const hasFilterValue = Boolean(filterValue)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -199,45 +228,122 @@ const SortableHeader = ({ header, table, autoFitEnabled }: any) => {
     flexGrow: 0,
   })
 
-  return (
-      <div
-          ref={setNodeRef}
-          style={{ ...style, ...getCellStyle(header.column.getSize()) }}
-          className="text-black dark:text-white select-none p-3 relative group bg-white dark:bg-gray-900"
-      >
-        <div className="flex items-center justify-between gap-2">
-          {header.isPlaceholder ? null : (
-              <button
-                  type="button"
-                  className="cursor-pointer flex items-center gap-1"
-                  onClick={header.column.getToggleSortingHandler()}
-              >
-                {flexRender(header.column.columnDef.header, header.getContext())}
-                {header.column.getIsSorted() === "asc" && " ▲"}
-                {header.column.getIsSorted() === "desc" && " ▼"}
-              </button>
-          )}
-          {/* Drag handle */}
-          <span
-              aria-label="Drag column"
-              className="cursor-grab select-none px-1 bg-white dark:bg-gray-900"
-              {...attributes}
-              {...listeners}
-          >
-          ⋮⋮
-        </span>
-        </div>
+  useEffect(() => {
+    if (!isFilterOpen) {
+      return
+    }
 
-        {(table.getState().columnFilters.some((f: any) => f.id === header.column.id) || table.getState().showFilter) && (
-            <div className="pt-2">
-              <input
-                  value={(header.column.getFilterValue() ?? "") as string}
-                  onChange={e => header.column.setFilterValue(e.target.value)}
-                  placeholder={`Filter...`}
-                  className="w-full border rounded px-2 py-1 text-xs bg-white dark:bg-gray-800 text-black dark:text-white"
-              />
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (!filterRef.current?.contains(target) && !popupRef.current?.contains(target)) {
+        setActiveFilterColumnId(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [isFilterOpen, setActiveFilterColumnId])
+
+  useLayoutEffect(() => {
+    if (!isFilterOpen || !filterButtonRef.current || !isBrowser) {
+      setPopupStyle(null)
+      return
+    }
+
+    const updatePopupPosition = () => {
+      const rect = filterButtonRef.current?.getBoundingClientRect()
+      if (!rect) return
+
+      const popupWidth = 220
+      const spacing = 8
+      const left = Math.min(
+        Math.max(8, rect.left + (rect.width / 2) - (popupWidth / 2)),
+        window.innerWidth - popupWidth - 8
+      )
+
+      setPopupStyle({
+        position: 'fixed',
+        left,
+        top: Math.max(8, rect.top - spacing),
+        width: popupWidth,
+        transform: 'translateY(-100%)',
+        zIndex: 80,
+      })
+    }
+
+    updatePopupPosition()
+    window.addEventListener('resize', updatePopupPosition)
+    window.addEventListener('scroll', updatePopupPosition, true)
+    return () => {
+      window.removeEventListener('resize', updatePopupPosition)
+      window.removeEventListener('scroll', updatePopupPosition, true)
+    }
+  }, [isFilterOpen])
+
+  return (
+      <>
+      <div
+          ref={node => {
+            setNodeRef(node)
+            filterRef.current = node
+          }}
+          style={{ ...style, ...getCellStyle(header.column.getSize()) }}
+          className="text-black dark:text-white select-none p-3 relative group bg-white dark:bg-gray-900 overflow-visible"
+      >
+        <div className="flex items-center">
+          {header.isPlaceholder ? null : (
+              <div className="min-w-0 flex-1 pr-16">
+                <button
+                    type="button"
+                    className="flex min-w-0 max-w-full cursor-pointer items-center gap-1 truncate text-left"
+                    onClick={header.column.getToggleSortingHandler()}
+                >
+                  <span className="truncate">{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                  {header.column.getIsSorted() === "asc" && " ▲"}
+                  {header.column.getIsSorted() === "desc" && " ▼"}
+                </button>
+              </div>
+          )}
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+            <div
+                className="relative"
+                onMouseEnter={() => setIsHintVisible(true)}
+                onMouseLeave={() => setIsHintVisible(false)}
+            >
+              <button
+                  ref={filterButtonRef}
+                  type="button"
+                  aria-label={`Search ${String(header.column.columnDef.header ?? header.column.id)}`}
+                  onClick={() => setActiveFilterColumnId(isFilterOpen ? null : header.column.id)}
+                  onFocus={() => setIsHintVisible(true)}
+                  onBlur={() => setIsHintVisible(false)}
+                  className={`rounded-md p-1 transition-colors ${
+                    hasFilterValue
+                      ? 'bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-500/30 dark:hover:bg-emerald-500/30'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
+                  }`}
+              >
+                <Search className="h-3.5 w-3.5" />
+              </button>
+              <div className={`pointer-events-none absolute right-0 top-full mt-1 whitespace-nowrap rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white shadow-lg transition-opacity duration-75 dark:bg-gray-100 dark:text-gray-900 ${isHintVisible ? 'opacity-100' : 'opacity-0'}`}>
+                {hasFilterValue ? `Filter: ${filterValue}` : 'Filter this column'}
+              </div>
             </div>
-        )}
+            <span
+                aria-label="Drag column"
+                className="cursor-grab select-none bg-white px-1 dark:bg-gray-900"
+                onMouseEnter={() => setIsDragHintVisible(true)}
+                onMouseLeave={() => setIsDragHintVisible(false)}
+                {...attributes}
+                {...listeners}
+            >
+              ⋮⋮
+            </span>
+            <div className={`pointer-events-none absolute right-0 top-full mt-1 whitespace-nowrap rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white shadow-lg transition-opacity duration-75 dark:bg-gray-100 dark:text-gray-900 ${isDragHintVisible ? 'opacity-100' : 'opacity-0'}`}>
+              Drag to reorder columns
+            </div>
+          </div>
+        </div>
 
         <div
             onMouseDown={autoFitEnabled ? undefined : header.getResizeHandler()}
@@ -252,10 +358,36 @@ const SortableHeader = ({ header, table, autoFitEnabled }: any) => {
                       : header.column.getIsResizing()
                       ? "bg-gradient-to-b from-indigo-400 via-sky-500 to-cyan-400"
                       : "bg-gray-300 dark:bg-gray-600 group-hover:bg-gradient-to-b group-hover:from-indigo-300 group-hover:via-sky-400 group-hover:to-cyan-300 dark:group-hover:from-indigo-400 dark:group-hover:via-sky-500 dark:group-hover:to-cyan-400")
-              }
+                  }
           />
         </div>
       </div>
+      {isBrowser && isFilterOpen && popupStyle ? createPortal(
+        <div
+            ref={popupRef}
+            style={popupStyle}
+            className="rounded-lg border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+        >
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+            <input
+                value={(header.column.getFilterValue() ?? "") as string}
+                onChange={e => header.column.setFilterValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setActiveFilterColumnId(null)
+                  }
+                }}
+                autoFocus
+                placeholder={`Search ${String(header.column.columnDef.header ?? header.column.id).toLowerCase()}...`}
+                className="w-full rounded-md border border-gray-200 bg-gray-50 py-1.5 pl-8 pr-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-gray-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500/10 dark:border-gray-700 dark:bg-gray-800/80 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-gray-500 dark:focus:bg-gray-800"
+            />
+          </div>
+        </div>,
+        document.body
+      ) : null}
+      </>
   )
 }
 
@@ -325,6 +457,7 @@ export default function GenericTable<TData extends Record<string, any>>({
 }) {
   const { removeContainer } = useDashboard()
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false)
+  const [activeFilterColumnId, setActiveFilterColumnId] = useState<string | null>(null)
 
   // A stable key per table instance for persistence namespaces
   const tableKey = useMemo(() => `table:${container?.id ?? 'generic'}`, [container?.id])
@@ -332,7 +465,6 @@ export default function GenericTable<TData extends Record<string, any>>({
   const [columns, setColumns] = useState<ColumnDef<TData, any>[]>([])
   const [sorting, setSorting] = useState<SortingState>(() => storage.get<SortingState>(`${tableKey}:sorting`, []))
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(() => storage.get<ColumnFiltersState>(`${tableKey}:filters`, []))
-  const [showFilter, setShowFilter] = useState<boolean>(() => storage.get<boolean>(`${tableKey}:showFilter`, false))
   const [beautifyJSON, setBeautifyJSON] = useState<boolean>(() => storage.get<boolean>(`${tableKey}:beautify`, false))
   const [columnOrder, setColumnOrder] = useState<string[]>(() => storage.get<string[]>(`${tableKey}:order`, []))
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>(
@@ -351,9 +483,10 @@ export default function GenericTable<TData extends Record<string, any>>({
 
   // Map incoming columns once, and reconcile order & sizes
   useEffect(() => {
-    const mapped = columnsProp.map((col: any) => col.cell ? col : {
+    const mapped = columnsProp.map((col: any) => ({
       ...col,
-      cell: (info: any) => {
+      filterFn: col.filterFn ?? stringIncludesFilter,
+      cell: col.cell ? col.cell : (info: any) => {
         const value = info.getValue() as unknown
         if (typeof value === 'number' && String(value).length === 13) {
           return new Date(value).toLocaleString()
@@ -364,7 +497,7 @@ export default function GenericTable<TData extends Record<string, any>>({
         }
         return <span className="whitespace-pre-wrap break-words">{String(value ?? '')}</span>
       }
-    })
+    }))
     setColumns(mapped)
 
     const ids = mapped
@@ -444,8 +577,6 @@ export default function GenericTable<TData extends Record<string, any>>({
       columnFilters,
       columnOrder,
       columnSizing,
-      // @ts-expect-error custom UI state
-      showFilter,
     },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -486,7 +617,6 @@ export default function GenericTable<TData extends Record<string, any>>({
   // Persist on changes
   useEffect(() => { storage.set(`${tableKey}:sorting`, sorting) }, [tableKey, sorting])
   useEffect(() => { storage.set(`${tableKey}:filters`, columnFilters) }, [tableKey, columnFilters])
-  useEffect(() => { storage.set(`${tableKey}:showFilter`, showFilter) }, [tableKey, showFilter])
   useEffect(() => { storage.set(`${tableKey}:beautify`, beautifyJSON) }, [tableKey, beautifyJSON])
   useEffect(() => { storage.set(`${tableKey}:order`, columnOrder) }, [tableKey, columnOrder])
   useEffect(() => { storage.set(`${tableKey}:sizes`, columnSizing) }, [tableKey, columnSizing])
@@ -496,6 +626,10 @@ export default function GenericTable<TData extends Record<string, any>>({
     if (!followLogs) return
     rowVirtualizer.scrollToIndex(data.length, { align: "start" })
   }, [data, followLogs, rowVirtualizer]);
+
+  const visibleRows = table.getRowModel().rows
+  const hasNoSourceData = data.length === 0
+  const hasNoFilteredResults = data.length > 0 && visibleRows.length === 0
 
   return (
       <div className="h-full flex min-h-0">
@@ -515,12 +649,6 @@ export default function GenericTable<TData extends Record<string, any>>({
               >
                 <div
                     className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
-                    onClick={() => setShowFilter(!showFilter)}
-                >
-                  Use Filter
-                </div>
-                <div
-                    className={'flex w-full items-center gap-2 font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900'}
                     onClick={() => setBeautifyJSON(v => !v)}
                 >
                   <span className="flex-1">Beautify JSON</span>
@@ -538,14 +666,13 @@ export default function GenericTable<TData extends Record<string, any>>({
                     onClick={() => {
                       setColumnFilters([])
                       setBeautifyJSON(false)
-                      setShowFilter(false)
+                      setActiveFilterColumnId(null)
                       setSorting([])
                       setColumnSizing({})
                       setAutoFitEnabled(DEFAULT_AUTO_FIT_ENABLED)
                       // clear persisted state
                       storage.set(`${tableKey}:filters`, [])
                       storage.set(`${tableKey}:beautify`, false)
-                      storage.set(`${tableKey}:showFilter`, false)
                       storage.set(`${tableKey}:sorting`, [])
                       storage.set(`${tableKey}:sizes`, {})
                       storage.set(`${tableKey}:autoFit`, DEFAULT_AUTO_FIT_ENABLED)
@@ -565,7 +692,7 @@ export default function GenericTable<TData extends Record<string, any>>({
 
           <div className="min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
             <div ref={parentRef} className="h-full overflow-auto" style={{ scrollbarGutter: 'stable' }}>
-              {data.length === 0 ? (
+              {hasNoSourceData ? (
                 <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center">
                   <div className="space-y-2">
                     <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -583,7 +710,13 @@ export default function GenericTable<TData extends Record<string, any>>({
                     <SortableContext items={columnOrder} strategy={horizontalListSortingStrategy}>
                       {table.getHeaderGroups().map(headerGroup => (
                           headerGroup.headers.map((header) => (
-                              <SortableHeader key={header.id} header={header} table={table} autoFitEnabled={autoFitEnabled} />
+                              <SortableHeader
+                                key={header.id}
+                                header={header}
+                                autoFitEnabled={autoFitEnabled}
+                                activeFilterColumnId={activeFilterColumnId}
+                                setActiveFilterColumnId={setActiveFilterColumnId}
+                              />
                           ))
                       ))}
                       <div className="flex-1"/>
@@ -591,28 +724,41 @@ export default function GenericTable<TData extends Record<string, any>>({
                   </div>
                 </DndContext>
 
-                <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }} className="w-full">
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const row = table.getRowModel().rows[virtualRow.index]
-                    return (
-                        <VirtualizedTableRow
-                            key={virtualRow.key}
-                            row={row}
-                            data-index={virtualRow.index}
-                            isEvenRow={row.index % 2 === 0}
-                            onSizeChange={(el) => rowVirtualizer.measureElement(el)}
-                            rowStyle={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              transform: `translateY(${virtualRow.start}px)`,
-                            }}
-                            cellStyle={getCellStyle}
-                        />
-                    )
-                  })}
-                </div>
+                {hasNoFilteredResults ? (
+                  <div className="flex min-h-[220px] items-center justify-center px-6 text-center">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                        No logs matched the given filters
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        Clear or adjust one of the active column searches to see results again
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }} className="w-full">
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const row = table.getRowModel().rows[virtualRow.index]
+                      return (
+                          <VirtualizedTableRow
+                              key={virtualRow.key}
+                              row={row}
+                              data-index={virtualRow.index}
+                              isEvenRow={row.index % 2 === 0}
+                              onSizeChange={(el) => rowVirtualizer.measureElement(el)}
+                              rowStyle={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                transform: `translateY(${virtualRow.start}px)`,
+                              }}
+                              cellStyle={getCellStyle}
+                          />
+                      )
+                    })}
+                  </div>
+                )}
               </div>
               )}
             </div>
