@@ -19,7 +19,7 @@ export function DefaultContainerSize(type: ContainerType) {
     case ContainerType.target: return {x: 0, y: 0, w: 5, h: 4}
     case ContainerType.logs: return {x: 0, y: 0, w: 19, h: 8}
     case ContainerType.event: return {x: 0, y: 0, w: 2, h: 3}
-    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 2, h: 3}
+    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 4, h: 4}
     case ContainerType.action: return {x: 0, y: 0, w: 2, h: 3}
   }
 }
