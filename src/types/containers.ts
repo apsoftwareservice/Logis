@@ -9,6 +9,8 @@ export enum ContainerType {
   action = 'action',
 }
 
+export const DEFAULT_TARGET_MAX_VALUE = 100
+
 export function DefaultContainerSize(type: ContainerType) {
   switch (type) {
     case ContainerType.graph: return {x: 0, y: 0, w: 6, h: 5}
@@ -62,6 +64,19 @@ export interface TargetModel {
   event: string
   parameterKey: string
   maxValue: number
+}
+
+export function DefaultContainerData(type: ContainerType): object {
+  switch (type) {
+    case ContainerType.target:
+      return {
+        event: '',
+        parameterKey: '',
+        maxValue: DEFAULT_TARGET_MAX_VALUE
+      }
+    default:
+      return {}
+  }
 }
 
 export interface EventModel {
