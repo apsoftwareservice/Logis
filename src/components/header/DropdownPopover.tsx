@@ -1,16 +1,19 @@
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
-import { X } from 'lucide-react'
+import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
+import { CircleHelp, X } from 'lucide-react'
 import React from 'react'
 import { capitalize, cn } from '@/lib/utils'
 
-export default function DropdownPopover({title, isOpen, setIsOpen, options = [], className, onOptionClick}: {
+export default function DropdownPopover({title, isOpen, setIsOpen, options = [], className, onOptionClick, getOptionLabel, getOptionDescription}: {
   title: string
   isOpen: boolean
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
   options: string[];
   className?: string
   onOptionClick?: (option: string) => void
+  getOptionLabel?: (option: string) => string
+  getOptionDescription?: (option: string) => string | undefined
 }) {
 
   function toggleDropdown() {
@@ -43,18 +46,40 @@ export default function DropdownPopover({title, isOpen, setIsOpen, options = [],
         { options && options.length > 0 ? (
           options.map((option, idx) => (
             <li key={ idx }>
+              { /* Keep the row clickable while letting the tooltip icon stay hoverable on its own. */ }
               <DropdownItem
                 onItemClick={ () => {
                   closeDropdown()
                   if (onOptionClick) onOptionClick(option)
                 } }
-                className="flex gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
+                className="flex items-center justify-between gap-3 rounded-lg border-b border-gray-100 p-3 px-4.5 py-3 hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-white/5"
               >
-                    <span className="block">
-                      <span className="mb-1.5 space-x-1 block text-theme-sm text-gray-500 dark:text-gray-400">
-                        <span className="font-medium text-gray-800 dark:text-white/90">{ capitalize(option) }</span>
-                      </span>
+                <span className="block">
+                  <span className="mb-1.5 block text-theme-sm text-gray-500 dark:text-gray-400">
+                    <span className="font-medium text-gray-800 dark:text-white/90">
+                      { getOptionLabel?.(option) ?? capitalize(option) }
                     </span>
+                  </span>
+                </span>
+                { getOptionDescription?.(option) && (
+                  <TooltipWrapper
+                    content={
+                      <div className="max-w-56 text-xs leading-5">
+                        { getOptionDescription(option) }
+                      </div>
+                    }
+                    side="bottom"
+                    className="max-w-56 rounded-md bg-black px-3 py-2 text-white shadow-lg dark:bg-white dark:text-black"
+                    disableHoverableContent
+                  >
+                    <span
+                      className="inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:text-gray-700 dark:hover:text-gray-200"
+                      onClick={ (event) => event.stopPropagation() }
+                    >
+                      <CircleHelp className="h-4 w-4"/>
+                    </span>
+                  </TooltipWrapper>
+                ) }
               </DropdownItem>
             </li>
           ))

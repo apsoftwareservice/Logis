@@ -7,6 +7,7 @@ interface TooltipWrapperProps {
   delayDuration?: number;    // Optional: delay for the tooltip to show
   side?: 'top' | 'right' | 'bottom' | 'left'; // Optional: position of the tooltip
   className?: string;        // Optional: custom class for tooltip content
+  disableHoverableContent?: boolean;
 }
 
 const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
@@ -15,10 +16,11 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
                                                          delayDuration = 0,
                                                          side = 'right',
                                                          className = 'flex items-center gap-4 bg-black text-white dark:bg-white dark:text-black',
+                                                         disableHoverableContent = false,
                                                        }) => {
   return (
     <TooltipProvider>
-      <Tooltip delayDuration={delayDuration}>
+      <Tooltip delayDuration={delayDuration} disableHoverableContent={disableHoverableContent}>
         <TooltipTrigger asChild>
           {children}
         </TooltipTrigger>

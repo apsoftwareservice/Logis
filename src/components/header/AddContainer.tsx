@@ -2,9 +2,8 @@ import React, { useState } from "react"
 
 import { SquarePlus } from "lucide-react"
 import DropdownPopover from '@/components/header/DropdownPopover'
-import { ContainerType, DefaultContainerData, DefaultContainerSize } from '@/types/containers'
+import { ContainerType, DefaultContainerData, DefaultContainerSize, getContainerTypeDescription, getContainerTypeLabel } from '@/types/containers'
 import { useDashboard } from '@/context/DashboardContext'
-import { capitalize } from '@/lib/utils'
 import { randomUUID } from "@/lib/crypto-util"
 
 export default function AddContainer() {
@@ -23,11 +22,13 @@ export default function AddContainer() {
         <SquarePlus width={20} height={20}/>
       </button>
       <DropdownPopover title={ 'Add Container' } isOpen={ isOpen } setIsOpen={ setIsOpen } options={ options }
+                       getOptionLabel={ (option) => getContainerTypeLabel(option as ContainerType) }
+                       getOptionDescription={ (option) => getContainerTypeDescription(option as ContainerType) }
                        className={ 'w-52' } onOptionClick={ (value) => {
         const type = value as ContainerType
         setContainers(containers => containers.concat({
           id: randomUUID(),
-          title: capitalize(value),
+          title: getContainerTypeLabel(value as ContainerType),
           type,
           gridLayout: DefaultContainerSize(type),
           data: DefaultContainerData(type)
