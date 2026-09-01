@@ -24,7 +24,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Check, Cog, Search } from 'lucide-react'
+import { ArrowDown, Check, Cog, Search } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DashboardContainer } from '@/types/containers'
@@ -43,6 +43,7 @@ const AUTO_FIT_CHAR_WIDTH = 8
 const AUTO_FIT_CELL_PADDING = 48
 // Reserve space for the per-column search trigger and drag handle so the header text does not collide with them.
 const HEADER_CONTROL_SPACE = 52
+const AUTO_FOLLOW_BOTTOM_THRESHOLD = 24
 
 // Keep the width within the table's supported minimum and maximum bounds.
 function boundAutoFitWidth(width: number) {
@@ -227,6 +228,7 @@ const SortableHeader = ({
     flexShrink: 0,
     flexGrow: 0,
   })
+
 
   useEffect(() => {
     if (!isFilterOpen) {
@@ -455,7 +457,7 @@ export default function GenericTable<TData extends Record<string, any>>({
   container: DashboardContainer<any>
   followLogs: boolean
 }) {
-  const { removeContainer } = useDashboard()
+  const { removeContainer, setFollowLogs } = useDashboard()
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false)
   const [activeFilterColumnId, setActiveFilterColumnId] = useState<string | null>(null)
 
@@ -475,6 +477,8 @@ export default function GenericTable<TData extends Record<string, any>>({
   )
 
   const parentRef = useRef<HTMLDivElement>(null)
+  const isAutoFollowingRef = useRef(followLogs)
+  const [isAtBottom, setIsAtBottom] = useState(true)
 
   const sensors = useSensors(
       useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -604,6 +608,17 @@ export default function GenericTable<TData extends Record<string, any>>({
     flexGrow: 0,
   })
 
+  const scrollTableToBottom = () => {
+    setFollowLogs(true)
+
+    const scrollElement = parentRef.current
+    if (!scrollElement) {
+      return
+    }
+
+    scrollElement.scrollTop = scrollElement.scrollHeight
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -623,9 +638,39 @@ export default function GenericTable<TData extends Record<string, any>>({
   useEffect(() => { storage.set(`${tableKey}:autoFit`, autoFitEnabled) }, [autoFitEnabled, tableKey])
 
   useEffect(() => {
-    if (!followLogs) return
-    rowVirtualizer.scrollToIndex(data.length, { align: "start" })
-  }, [data, followLogs, rowVirtualizer]);
+    isAutoFollowingRef.current = followLogs
+  }, [followLogs])
+
+  useEffect(() => {
+    const scrollElement = parentRef.current
+    if (!scrollElement) return
+
+    const handleScroll = () => {
+      const distanceFromBottom =
+        scrollElement.scrollHeight - scrollElement.scrollTop - scrollElement.clientHeight
+      const atBottom = distanceFromBottom <= AUTO_FOLLOW_BOTTOM_THRESHOLD
+
+      setIsAtBottom(atBottom)
+
+      const nextAutoFollowing = followLogs && atBottom
+      isAutoFollowingRef.current = nextAutoFollowing
+    }
+
+    handleScroll()
+    scrollElement.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => scrollElement.removeEventListener('scroll', handleScroll)
+  }, [followLogs])
+
+  useLayoutEffect(() => {
+    if (!followLogs || !isAutoFollowingRef.current || data.length === 0) return
+
+    const scrollElement = parentRef.current
+    if (!scrollElement) return
+
+    scrollElement.scrollTop = scrollElement.scrollHeight
+    setIsAtBottom(true)
+  }, [data.length, followLogs])
 
   const visibleRows = table.getRowModel().rows
   const hasNoSourceData = data.length === 0
@@ -690,8 +735,8 @@ export default function GenericTable<TData extends Record<string, any>>({
             </div>
           </div>
 
-          <div className="min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
-            <div ref={parentRef} className="h-full overflow-auto" style={{ scrollbarGutter: 'stable' }}>
+          <div className="relative min-w-0 h-full rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden flex flex-col">
+            <div ref={parentRef} className="flex-1 min-h-0 overflow-auto" style={{ scrollbarGutter: 'stable' }}>
               {hasNoSourceData ? (
                 <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center">
                   <div className="space-y-2">
@@ -762,6 +807,21 @@ export default function GenericTable<TData extends Record<string, any>>({
               </div>
               )}
             </div>
+            {!isAtBottom ? (
+              <div className="group absolute bottom-6 left-1/2 z-20 -translate-x-1/2 flex flex-col items-center">
+                <div className="pointer-events-none mb-1 rounded-full bg-gray-950/90 px-3 py-1.5 text-sm font-medium text-white opacity-0 shadow-lg transition-opacity duration-75 group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-gray-100 dark:text-gray-900">
+                  Jump to latest
+                </div>
+                <button
+                  type="button"
+                  onClick={scrollTableToBottom}
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white/90 text-gray-600 shadow-lg shadow-black/10 backdrop-blur transition hover:bg-white hover:text-gray-900 dark:border-gray-600 dark:bg-gray-800/90 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+                  aria-label="Scroll table to bottom"
+                >
+                  <ArrowDown width={18} height={18} />
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
