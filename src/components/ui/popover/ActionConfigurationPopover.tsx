@@ -2,10 +2,10 @@ import React, { useState } from 'react'
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/dropdown/select'
 import { ActionModel } from '@/types/containers'
 import { Trash2, Plus } from 'lucide-react'
+import ConfigurationPopover from '@/components/ui/popover/ConfigurationPopover'
 
 export interface ActionConfigurationPopoverProps {
   index?: any
@@ -49,36 +49,20 @@ export function ActionConfigurationPopover({currentValue, onChange}: ActionConfi
     setParams(updated)
   }
 
-  const handleApply = () => {
-    onChange({
-      method,
-      url,
-      headers: headers.filter(h => h.key.trim() !== ''),
-      params: params.filter(p => p.key.trim() !== ''),
-      body
-    })
-    setIsOpen(false)
-  }
-
   return (
-    <Popover modal open={ isOpen } onOpenChange={ setIsOpen }>
-      <PopoverTrigger asChild>
-        <div
-          className={ 'flex w-full font-normal text-left rounded-lg dark:hover:bg-white/5 dark:hover:text-gray-300  px-4 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-100 hover:text-gray-900' }>
-          Configuration
-        </div>
-      </PopoverTrigger>
-      <PopoverContent
-        className="w-96 max-h-[80vh] overflow-y-auto"
-        onMouseDown={ (e) => {
-          e.stopPropagation()
-        } }
-      >
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="leading-none font-medium">HTTP Request Configuration</h4>
-          </div>
-
+    <ConfigurationPopover
+      isOpen={ isOpen }
+      setIsOpen={ setIsOpen }
+      title="HTTP Request Configuration"
+      contentClassName="w-96 max-h-[80vh] overflow-y-auto"
+      onApply={ () => onChange({
+        method,
+        url,
+        headers: headers.filter(h => h.key.trim() !== ''),
+        params: params.filter(p => p.key.trim() !== ''),
+        body
+      }) }
+    >
           <div className="grid gap-2">
             <Label>Method</Label>
             <Select value={ method } onValueChange={ (value) => setMethod(value) }>
@@ -202,16 +186,6 @@ export function ActionConfigurationPopover({currentValue, onChange}: ActionConfi
               />
             </div>
           )}
-        </div>
-        <div className="flex items-center justify-end gap-2 pt-4">
-          <Button
-            variant="default"
-            onClick={ handleApply }
-          >
-            Apply
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+    </ConfigurationPopover>
   )
 }
