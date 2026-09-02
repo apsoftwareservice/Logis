@@ -4,7 +4,7 @@ import { useDashboard } from '@/context/DashboardContext'
 import { EventTypeIndex, Observer } from '@/core/engine'
 import BaseView from '@/components/dashboard/BaseView'
 import { EventParameterConfigurationPopover } from '@/components/ui/popover/EventParameterConfigurationPopover'
-import { getNestedValue } from '@/lib/utils'
+import { formatDisplayValue, getNestedValue } from '@/lib/utils'
 import {randomUUID} from "@/lib/crypto-util";
 
 export function StateView({container}: { container: DashboardContainer<StateModel> }) {
@@ -28,7 +28,7 @@ export function StateView({container}: { container: DashboardContainer<StateMode
       const lastEvent = eventBucket.getLastEventAtOrBefore(timestampMs)
 
       if (lastEvent?.data && container.data.parameterKey) {
-        setValue(getNestedValue(lastEvent.data as any, container.data.parameterKey))
+        setValue(formatDisplayValue(getNestedValue(lastEvent.data as any, container.data.parameterKey)))
       } else
         setValue('-')
     }
@@ -37,9 +37,9 @@ export function StateView({container}: { container: DashboardContainer<StateMode
   return (
     <BaseView body={
       <div className="flex w-full h-full justify-center items-center">
-        <h4 className="font-bold text-gray-800 text-sm dark:text-white/90">
+        <pre className="whitespace-pre-wrap break-words text-center font-bold text-gray-800 text-sm dark:text-white/90">
           { value }
-        </h4>
+        </pre>
       </div>
     } configuration={
       <>

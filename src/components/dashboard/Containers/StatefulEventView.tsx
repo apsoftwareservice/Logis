@@ -7,7 +7,7 @@ import BaseView from '@/components/dashboard/BaseView'
 import { motion } from 'framer-motion'
 import { StatefulEventConfigurationPopover } from '@/components/ui/popover/StatefulEventConfigurationPopover'
 import { randomUUID } from "@/lib/crypto-util"
-import { getNestedValue, cn } from "@/lib/utils";
+import { cn, formatDisplayValue, getNestedValue } from "@/lib/utils";
 import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
 
 type StatefulPhase = 'waiting' | 'active' | 'completed'
@@ -80,7 +80,7 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
       const parameterValue = lastStartEvent?.data && container.data.parameterKey
         ? getNestedValue(lastStartEvent.data as any, container.data.parameterKey)
         : ''
-      const parameter = parameterValue === '' || parameterValue == null ? '' : String(parameterValue)
+      const parameter = parameterValue === '' || parameterValue == null ? '' : formatDisplayValue(parameterValue)
 
       const phase: StatefulPhase = !lastStartEvent
         ? 'waiting'
@@ -163,7 +163,7 @@ export function StatefulEventView({container}: { container: DashboardContainer<S
             Value
           </div>
           <div className={ cn(
-            "mt-1 break-words text-sm font-semibold",
+            "mt-1 whitespace-pre-wrap break-words text-sm font-semibold",
             valueText === '—'
               ? "text-gray-400 dark:text-gray-500"
               : "text-gray-800 dark:text-white/90"
