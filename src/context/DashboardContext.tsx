@@ -390,11 +390,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
   async function parseFiles(files: File[]) {
     files.forEach(file => {
-      try {
-        parseLogFile(file)
-      } catch (error) {
+      parseLogFile(file).catch(error => {
         toast.error(`${ error }`)
-      }
+      })
     })
   }
 
