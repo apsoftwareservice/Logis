@@ -81,7 +81,7 @@ function NestedLevel<T extends NestedObject>({
             <DropdownMenuSub key={ fullPath }>
               <DropdownMenuSubTrigger
                 className={ cn(
-                  "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent",
+                  "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-gray-100 focus:text-gray-900 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300 dark:data-[state=open]:bg-white/5 dark:data-[state=open]:text-gray-300",
                   depth > 0 && "pl-8"
                 ) }
                 onClick={ () => onSelect(fullPath) }
@@ -90,7 +90,7 @@ function NestedLevel<T extends NestedObject>({
                 {isSelected ? <Check className="h-4 w-4 shrink-0" /> : null}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
-                className="max-h-96 overflow-y-auto border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-900"
+                className="max-h-96 overflow-y-auto border border-gray-200 bg-white p-1 text-gray-700 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
               >
                 <NestedLevel
                   data={ value as any }
@@ -108,7 +108,7 @@ function NestedLevel<T extends NestedObject>({
           <DropdownMenuItem
             key={ fullPath }
             className={ cn(
-              "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground",
+              "flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-gray-100 focus:text-gray-900 dark:focus:bg-white/5 dark:focus:text-gray-300",
               depth > 0 && "pl-8"
             ) }
             onSelect={ () => onSelect(fullPath) }
@@ -141,7 +141,7 @@ function NestedSelect<T extends NestedObject>({data, value, onSelect, prefix = '
           <ChevronRight className="h-4 w-4 rotate-90 opacity-50" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-h-96 min-w-44 overflow-hidden border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-900" align="start">
+      <DropdownMenuContent className="max-h-96 min-w-44 overflow-hidden border border-gray-200 bg-white p-1 text-gray-700 shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300" align="start">
         <NestedLevel
           data={ data }
           prefix={ prefix }
