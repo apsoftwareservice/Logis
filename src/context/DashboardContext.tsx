@@ -179,8 +179,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
     })
   }, [])
 
-  function appendNewEventsFromSource(source: InputSource) {
-    source.start((events) => {
+  async function appendNewEventsFromSource(source: InputSource) {
+    await source.start((events) => {
       if (!events || events.length <= 0) {
         toast.error('No logs found')
         source.stop?.()
@@ -276,7 +276,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   const startEngineWithSource = useCallback(async (source: InputSource) => {
     engine.current = new TimelineEngine(source)
     setFollowLogs(source.type === InputType.stream)
-    engine.current.source.start(handleSourceEvents)
+    await engine.current.source.start(handleSourceEvents)
   }, [ handleSourceEvents ])
 
   const startLiveSession = useCallback(async (sessionKey: string) => {
@@ -389,10 +389,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   }
 
   async function parseFiles(files: File[]) {
+    const SHOW_LOADING_TOAST_DELAY_MS = 300
+
     files.forEach(file => {
-      parseLogFile(file).catch(error => {
-        toast.error(`${ error }`)
-      })
+      let toastId: ReturnType<typeof toast.loading> | null = null
+      // Only show the toast if loading is still going after a short delay, so fast
+      // loads never flash a toast that would just have to disappear again immediately.
+      const showTimer = setTimeout(() => {
+        toastId = toast.loading(`Loading ${ file.name }...`)
+      }, SHOW_LOADING_TOAST_DELAY_MS)
+
+      parseLogFile(file)
+        .catch(error => {
+          toast.error(`${ error }`)
+        })
+        .finally(() => {
+          clearTimeout(showTimer)
+          if (toastId !== null) {
+            toast.dismiss(toastId)
+          }
+        })
     })
   }
 
@@ -443,7 +459,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
     if (engine.current) {
       if (engine.current.source !== source) {
-        appendNewEventsFromSource(source)
+        await appendNewEventsFromSource(source)
       }
     } else {
       await startEngineWithSource(source)
