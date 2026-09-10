@@ -2,15 +2,11 @@ import React, { useState } from "react"
 
 import { SquarePlus } from "lucide-react"
 import DropdownPopover from '@/components/header/DropdownPopover'
-import { ContainerType, DefaultContainerData, DefaultContainerSize, getContainerTypeDescription, getContainerTypeLabel } from '@/types/containers'
-import { useDashboard } from '@/context/DashboardContext'
-import { randomUUID } from "@/lib/crypto-util"
+import { useAddContainer } from '@/hooks/useAddContainer'
 
 export default function AddContainer() {
-  const {setContainers} = useDashboard()
   const [ isOpen, setIsOpen ] = useState(false)
-
-  const options = Object.keys(ContainerType)
+  const { options, addContainer, getOptionLabel, getOptionDescription } = useAddContainer()
 
   return (
     <div className="relative">
@@ -22,18 +18,9 @@ export default function AddContainer() {
         <SquarePlus width={20} height={20}/>
       </button>
       <DropdownPopover title={ 'Add Container' } isOpen={ isOpen } setIsOpen={ setIsOpen } options={ options }
-                       getOptionLabel={ (option) => getContainerTypeLabel(option as ContainerType) }
-                       getOptionDescription={ (option) => getContainerTypeDescription(option as ContainerType) }
-                       className={ 'w-52' } onOptionClick={ (value) => {
-        const type = value as ContainerType
-        setContainers(containers => containers.concat({
-          id: randomUUID(),
-          title: getContainerTypeLabel(value as ContainerType),
-          type,
-          gridLayout: DefaultContainerSize(type),
-          data: DefaultContainerData(type)
-        }))
-      } }/>
+                       getOptionLabel={ getOptionLabel }
+                       getOptionDescription={ getOptionDescription }
+                       className={ 'w-52' } onOptionClick={ addContainer }/>
     </div>
   )
 }
