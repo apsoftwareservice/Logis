@@ -7,7 +7,6 @@ import React, { useState } from "react"
 import { useDashboard } from '@/context/DashboardContext'
 import Search from '@/components/header/Search'
 import AddContainer from '@/components/header/AddContainer'
-import GridController from '@/components/header/GridController'
 import LiveSession from '@/components/header/LiveSession'
 import Badge from '@/components/ui/badge/Badge'
 import ExportPreset from '@/components/header/ExportPreset'
@@ -56,7 +55,6 @@ const AppHeader: React.FC = () => {
           ) }
           <LiveSession/>
           { hasContainers && <ExportPreset/> }
-          { hasContainers && <GridController/> }
           { hasDashboardContext && <ResetLogs/> }
           <ThemeToggleButton/>
           { hasContainers && <AddContainer/> }
