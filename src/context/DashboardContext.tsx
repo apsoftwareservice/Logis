@@ -26,9 +26,6 @@ type DashboardContextType = {
   logs: object[]
   setLogs: React.Dispatch<React.SetStateAction<object[]>>
 
-  lockGrid: boolean
-  setLockGrid: React.Dispatch<React.SetStateAction<boolean>>
-
   markers: Marker[]
   setMarkers: React.Dispatch<React.SetStateAction<Marker[]>>
 
@@ -82,7 +79,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
   // We use that to clear per-container local UI state after a data reset
   // while keeping the saved container definitions and layout intact.
   const [ containerRenderKey, setContainerRenderKey ] = useState(() => randomUUID())
-  const [ lockGrid, setLockGrid ] = useState(true)
   const [ currentTimestamp, setCurrentTimestamp ] = useState(0)
   const [ clips, setClips ] = useState<Clip[]>([])
   const [ markers, setMarkers ] = useState<Marker[]>([])
@@ -169,7 +165,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
 
       if (removeContainers) {
         setContainers([])
-        setLockGrid(true)
       }
 
       if (clearSession) {
@@ -560,8 +555,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         setMarkers,
         containers,
         setContainers,
-        lockGrid,
-        setLockGrid,
         updateContainerTitle,
         updateContainerSize,
         removeContainer,

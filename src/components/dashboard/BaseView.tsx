@@ -3,7 +3,7 @@
 import { useDashboard } from '@/context/DashboardContext'
 import React, { ReactElement, useEffect, useReducer, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
-import { MoreHorizontal } from 'lucide-react'
+import { GripVertical, MoreHorizontal } from 'lucide-react'
 import { DashboardContainer } from '@/types/containers'
 import { Dropdown } from '@/components/ui/dropdown/Dropdown'
 import { DropdownItem } from '@/components/ui/dropdown/DropdownItem'
@@ -69,6 +69,12 @@ export default function BaseView({body, className, configuration, container, men
       className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
       <div className="flex flex-col gap-3 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
         <div className={ 'flex items-center gap-3 align-middle min-w-0' }>
+          <span
+            title="Drag to move"
+            className="drag-handle flex shrink-0 cursor-grab items-center text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400"
+          >
+            <GripVertical width={ 18 } height={ 18 }/>
+          </span>
           { isEditingTitle ? (
             <input
               ref={ titleInputRef }
