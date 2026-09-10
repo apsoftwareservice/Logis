@@ -1,7 +1,7 @@
 "use client"
 
 import { useDashboard } from '@/context/DashboardContext'
-import React, { ReactElement, useEffect, useReducer, useState } from 'react'
+import React, { ReactElement, useEffect, useReducer, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { MoreHorizontal } from 'lucide-react'
 import { DashboardContainer } from '@/types/containers'
@@ -18,15 +18,43 @@ export interface BaseViewProps {
 }
 
 // Right-clicking a container is equivalent to clicking its three-dot menu, except
-// over editable text (the title input while unlocked, form fields) where the
-// native browser menu - copy/paste/select-all - should stay available instead.
-// The title is plain text (not an input) while the grid is locked, so it never
+// over editable text (the title while actively being renamed, form fields) where
+// the native browser menu - copy/paste/select-all - should stay available instead.
+// The title is plain text (not an input) until clicked into edit mode, so it never
 // matches this selector and opens the container menu like everything else.
 const CONTEXT_MENU_IGNORE_SELECTOR = "input:read-write, textarea:read-write, select:not(:disabled), [contenteditable='true']"
 
 export default function BaseView({body, className, configuration, container, menuItems}: BaseViewProps) {
-  const {updateContainerTitle, lockGrid, removeContainer} = useDashboard()
+  const {updateContainerTitle, removeContainer} = useDashboard()
   const [ isDropdownOpen, setIsDropdownOpen ] = useState<boolean>(false)
+  const [ isEditingTitle, setIsEditingTitle ] = useState(false)
+  const [ draftTitle, setDraftTitle ] = useState(container.title)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  // Enter/Escape close editing explicitly, but that also unmounts the input, which
+  // fires a native blur right after - this flag stops that blur from re-running the
+  // close logic a second time.
+  const skipNextBlurRef = useRef(false)
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus()
+      titleInputRef.current?.select()
+    }
+  }, [ isEditingTitle ])
+
+  const startEditingTitle = () => {
+    setDraftTitle(container.title)
+    setIsEditingTitle(true)
+  }
+
+  const closeEditingTitle = (commit: boolean) => {
+    skipNextBlurRef.current = true
+    if (commit) {
+      const trimmed = draftTitle.trim()
+      if (trimmed) updateContainerTitle(container, trimmed)
+    }
+    setIsEditingTitle(false)
+  }
 
   const handleContainerContextMenu = (event: React.MouseEvent) => {
     if ((event.target as HTMLElement).closest(CONTEXT_MENU_IGNORE_SELECTOR)) return
@@ -41,19 +69,33 @@ export default function BaseView({body, className, configuration, container, men
       className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
       <div className="flex flex-col gap-3 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
         <div className={ 'flex items-center gap-3 align-middle min-w-0' }>
-          { lockGrid ? (
-            <span className="min-w-0 truncate text-lg font-semibold text-gray-800 dark:text-white/90">
+          { isEditingTitle ? (
+            <input
+              ref={ titleInputRef }
+              type="text"
+              value={ draftTitle }
+              onChange={ (e) => setDraftTitle(e.target.value) }
+              onBlur={ () => {
+                if (skipNextBlurRef.current) {
+                  skipNextBlurRef.current = false
+                  return
+                }
+                closeEditingTitle(true)
+              } }
+              onKeyDown={ (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); closeEditingTitle(true) }
+                if (e.key === 'Escape') { e.preventDefault(); closeEditingTitle(false) }
+              } }
+              className="no-drag min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400"
+            />
+          ) : (
+            <span
+              onClick={ startEditingTitle }
+              title="Click to rename"
+              className="no-drag min-w-0 truncate rounded px-0.5 -mx-0.5 text-lg font-semibold text-gray-800 cursor-text hover:bg-gray-100 dark:text-white/90 dark:hover:bg-white/5"
+            >
               { container.title }
             </span>
-          ) : (
-            <input
-              type="text"
-              value={ container.title }
-              onChange={ (e) => {
-                updateContainerTitle(container, e.target.value)
-              } }
-              className="min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400"
-            />
           ) }
         </div>
 
