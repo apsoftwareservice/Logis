@@ -190,7 +190,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
       const {dateKey, messageKey} = discoverKeys(events[0])
 
       if (dateKey !== cachedDateKey.current || messageKey !== cachedMessageKey.current) {
-        toast.error(`The date key "${ dateKey }" mast match the already existing key "${ cachedDateKey }", same for the message key`)
+        toast.error(`The date key "${ dateKey }" must match the already existing key "${ cachedDateKey.current }", same for the message key`)
         source.stop?.()
         return
       }
@@ -457,11 +457,16 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({chil
         }
     }
 
-    if (engine.current) {
+    if (engine.current && index.current) {
+      // A real baseline (date/message keys) is already established - append against it.
       if (engine.current.source !== source) {
         await appendNewEventsFromSource(source)
       }
     } else {
+      // Either no engine yet, or one exists but never received a first event (e.g. an
+      // auto-started live session that's still waiting) - there's no baseline to append
+      // against, so treat this file as the actual first load instead.
+      engine.current?.source.stop?.()
       await startEngineWithSource(source)
     }
   }
