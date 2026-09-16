@@ -17,24 +17,44 @@ export interface BaseViewProps {
   container: DashboardContainer<any>
 }
 
+// Right-clicking a container is equivalent to clicking its three-dot menu, except
+// over editable text (the title input while unlocked, form fields) where the
+// native browser menu - copy/paste/select-all - should stay available instead.
+// The title is plain text (not an input) while the grid is locked, so it never
+// matches this selector and opens the container menu like everything else.
+const CONTEXT_MENU_IGNORE_SELECTOR = "input:read-write, textarea:read-write, select:not(:disabled), [contenteditable='true']"
+
 export default function BaseView({body, className, configuration, container, menuItems}: BaseViewProps) {
   const {updateContainerTitle, lockGrid, removeContainer} = useDashboard()
   const [ isDropdownOpen, setIsDropdownOpen ] = useState<boolean>(false)
 
+  const handleContainerContextMenu = (event: React.MouseEvent) => {
+    if ((event.target as HTMLElement).closest(CONTEXT_MENU_IGNORE_SELECTOR)) return
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDropdownOpen(true)
+  }
+
   return (
     <div
+      onContextMenu={ handleContainerContextMenu }
       className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
       <div className="flex flex-col gap-3 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
         <div className={ 'flex items-center gap-3 align-middle min-w-0' }>
-          <input
-            type="text"
-            value={ container.title }
-            onChange={ (e) => {
-              updateContainerTitle(container, e.target.value)
-            } }
-            disabled={ lockGrid }
-            className={ cn("min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent ", !lockGrid && "border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400") }
-          />
+          { lockGrid ? (
+            <span className="min-w-0 truncate text-lg font-semibold text-gray-800 dark:text-white/90">
+              { container.title }
+            </span>
+          ) : (
+            <input
+              type="text"
+              value={ container.title }
+              onChange={ (e) => {
+                updateContainerTitle(container, e.target.value)
+              } }
+              className="min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400"
+            />
+          ) }
         </div>
 
         { menuItems && (
