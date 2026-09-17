@@ -38,21 +38,22 @@ export default function BaseView({body, className, configuration, container, men
   return (
     <div
       onContextMenu={ handleContainerContextMenu }
-      className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
-      <div className="flex flex-col gap-3 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
-        <div className={ 'flex items-center gap-3 align-middle min-w-0' }>
+      className={ cn("w-full h-full flex flex-col gap-2 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-white/[0.03]", className) }>
+      <div className="flex min-w-0 flex-col gap-2 items-center align-middle sm:flex-row sm:items-center sm:justify-between">
+        <div className={ 'flex items-center gap-2 align-middle min-w-0' }>
           { lockGrid ? (
-            <span className="min-w-0 truncate text-lg font-semibold text-gray-800 dark:text-white/90">
+            <span title={ container.title } className="min-w-0 truncate text-lg font-semibold text-gray-800 dark:text-white/90">
               { container.title }
             </span>
           ) : (
             <input
               type="text"
+              title={ container.title }
               value={ container.title }
               onChange={ (e) => {
                 updateContainerTitle(container, e.target.value)
               } }
-              className="min-w-0 text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400"
+              className="min-w-0 truncate text-lg font-semibold text-gray-800 dark:text-white/90 bg-transparent border-b border-gray-300 dark:border-gray-600 focus:outline-none focus:border-green-500 dark:focus:border-green-400"
             />
           ) }
         </div>
@@ -69,7 +70,7 @@ export default function BaseView({body, className, configuration, container, men
 
         <div className="">
           <button onClick={ () => setIsDropdownOpen(true) } className="dropdown-toggle">
-            <MoreHorizontal className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
+            <MoreHorizontal width={ 18 } height={ 18 } className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"/>
           </button>
           <Dropdown
             isOpen={ isDropdownOpen }

@@ -19,6 +19,8 @@ import { ActionView } from '@/components/dashboard/Containers/ActionView'
 import ContextMenu, { ContextMenuPosition } from '@/components/ui/dropdown/ContextMenu'
 import { useAddContainer } from '@/hooks/useAddContainer'
 import { pixelOffsetToGridPosition } from '@/lib/gridPosition'
+import { useGridColumnWidth } from '@/hooks/useGridColumnWidth'
+import { measureTitleWidth } from '@/lib/measureTitleWidth'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
@@ -27,6 +29,16 @@ const ResponsiveGridLayout = WidthProvider(Responsive)
 // to match, so existing containers keep their current on-screen width.
 const gridSize = {lg: 38, md: 32, sm: 28, xs: 12, xxs: 4}
 const GRID_MARGIN: [ number, number ] = [ 5, 5 ]
+
+// Fixed pixel cost of a container's header chrome at the current padding/gaps
+// in BaseView.tsx (card padding ~24px, row gap ~8px, the three-dot icon ~18px)
+// - i.e. everything in the header besides the title text itself. This branch's
+// BaseView has no drag handle, unlike the sibling drag-handle branch - don't
+// copy that branch's chrome estimate here without rechecking.
+const CHROME_PX = 55
+// Same conservative estimate as before, used only until the live column width
+// below is measured (first render, before the layout effect runs).
+const ASSUMED_COL_PX = 40
 
 // react-grid-layout's own default breakpoints - we don't override the `breakpoints`
 // prop below, so this must stay in sync with what it falls back to internally.
@@ -44,6 +56,7 @@ export default function Dashboard() {
   // grid x/y once the user picks a container type, since itemWidth varies by type.
   const [ pendingGridClick, setPendingGridClick ] = useState<{ containerWidth: number, offsetX: number, offsetY: number } | null>(null)
   const hasContainers = containers.length > 0
+  const [ gridWrapperRef, gridMetrics ] = useGridColumnWidth(gridSize, gridBreakpoints, GRID_MARGIN)
 
   const handleBackgroundContextMenu = (event: React.MouseEvent) => {
     if ((event.target as HTMLElement).closest(BACKGROUND_CONTEXT_MENU_IGNORE_SELECTOR)) return
@@ -79,6 +92,17 @@ export default function Dashboard() {
     addContainer(value, gridPosition)
   }
 
+  // A container can never be resized narrower than what it takes to show its
+  // own title in full - only a shorter title makes a smaller container possible.
+  const minWidthForTitle = (title: string): number => {
+    const neededPx = measureTitleWidth(title) + CHROME_PX
+    const colWidth = gridMetrics?.colWidth ?? ASSUMED_COL_PX
+    return Math.min(
+      Math.max(MIN_CONTAINER_W, Math.ceil(neededPx / colWidth)),
+      gridMetrics?.cols ?? Infinity,
+    )
+  }
+
   return (
     <div className="relative h-full w-full flex flex-col" onContextMenu={ handleBackgroundContextMenu }>
       { !index?.current && !hasContainers ? (
@@ -86,7 +110,7 @@ export default function Dashboard() {
           <MainWaitingView animation={ cat } title={ "Drag log file, or start Live Session" }/>
         </div>
       ) : (
-        <div>
+        <div ref={ gridWrapperRef }>
           <ResponsiveGridLayout
             className="layout mb-48"
             cols={ gridSize }
@@ -105,8 +129,15 @@ export default function Dashboard() {
           >
             { containers.map((container) => {
               // Floors resizing so a container can never shrink below what its
-              // header chrome (title, three-dot menu) needs.
-              const gridItemProps = { ...container.gridLayout, minW: MIN_CONTAINER_W, minH: MIN_CONTAINER_H }
+              // header chrome needs, or below what its own title needs to show
+              // in full - a shorter title is the only way to get it narrower.
+              const minW = minWidthForTitle(container.title)
+              const gridItemProps = {
+                ...container.gridLayout,
+                w: Math.max(container.gridLayout.w, minW),
+                minW,
+                minH: MIN_CONTAINER_H,
+              }
               switch (container.type) {
                 case ContainerType.graph:
                   return (
