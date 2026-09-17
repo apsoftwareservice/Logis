@@ -5,7 +5,7 @@ import TableView from "@/components/dashboard/Containers/TableView"
 import { Timeline } from '@/components/timeline/Timeline'
 import GraphView from '@/components/dashboard/Containers/GraphView'
 import { useDashboard } from '@/context/DashboardContext'
-import { ContainerType, DefaultContainerSize } from '@/types/containers'
+import { ContainerType, DefaultContainerSize, MIN_CONTAINER_H, MIN_CONTAINER_W } from '@/types/containers'
 import { Responsive, WidthProvider } from "react-grid-layout"
 import DropZone from '@/components/ui/dropdown/DropZone'
 import { StateView } from '@/components/dashboard/Containers/StateView'
@@ -22,7 +22,11 @@ import { pixelOffsetToGridPosition } from '@/lib/gridPosition'
 
 const ResponsiveGridLayout = WidthProvider(Responsive)
 
-const gridSize = {lg: 19, md: 16, sm: 14, xs: 6, xxs: 2}
+// Doubled from {lg: 19, md: 16, sm: 14, xs: 6, xxs: 2} for twice the horizontal
+// resize precision - every type's default w in types/containers.ts was doubled
+// to match, so existing containers keep their current on-screen width.
+const gridSize = {lg: 38, md: 32, sm: 28, xs: 12, xxs: 4}
+const GRID_MARGIN: [ number, number ] = [ 5, 5 ]
 
 // react-grid-layout's own default breakpoints - we don't override the `breakpoints`
 // prop below, so this must stay in sync with what it falls back to internally.
@@ -82,11 +86,12 @@ export default function Dashboard() {
           <MainWaitingView animation={ cat } title={ "Drag log file, or start Live Session" }/>
         </div>
       ) : (
-        <>
+        <div>
           <ResponsiveGridLayout
             className="layout mb-48"
             cols={ gridSize }
-            rowHeight={ 50 }
+            rowHeight={ 25 }
+            margin={ GRID_MARGIN }
             autoSize={ true }
             allowOverlap={ false }
             isDraggable={ !lockGrid }
@@ -99,10 +104,13 @@ export default function Dashboard() {
             draggableCancel={ "button, [role='button'], a, input, textarea, select, .no-drag, .drag-cancel" }
           >
             { containers.map((container) => {
+              // Floors resizing so a container can never shrink below what its
+              // header chrome (title, three-dot menu) needs.
+              const gridItemProps = { ...container.gridLayout, minW: MIN_CONTAINER_W, minH: MIN_CONTAINER_H }
               switch (container.type) {
                 case ContainerType.graph:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* Keep the grid item key stable for layout persistence, but remount the
                           inner view after reset so its local UI state is cleared. */}
                       {/* @ts-expect-error ignore*/ }
@@ -111,48 +119,48 @@ export default function Dashboard() {
                   )
                 case ContainerType.table:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* @ts-expect-error ignore */ }
                       <TableView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.state:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* @ts-expect-error ignore */ }
                       <StateView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.event:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* @ts-expect-error ignore */ }
                       <EventView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                   case ContainerType.statefulEvent:
                       return (
-                          <div key={ container.id } data-grid={ container.gridLayout }>
+                          <div key={ container.id } data-grid={ gridItemProps }>
                               {/* @ts-expect-error ignore */ }
                               <StatefulEventView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                           </div>
                       )
                 case ContainerType.target:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* @ts-expect-error ignore */ }
                       <TargetView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.logs:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       <LoggerView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
                   )
                 case ContainerType.action:
                   return (
-                    <div key={ container.id } data-grid={ container.gridLayout }>
+                    <div key={ container.id } data-grid={ gridItemProps }>
                       {/* @ts-expect-error ignore */ }
                       <ActionView key={ `${ containerRenderKey }-${ container.id }` } container={ container }/>
                     </div>
@@ -162,12 +170,12 @@ export default function Dashboard() {
               }
             }) }
           </ResponsiveGridLayout>
-          { index?.current && (
-            <div className="fixed bottom-0 left-0 w-full z-50" data-no-bg-context-menu>
-              <Timeline/>
-            </div>
-          ) }
-        </>
+        </div>
+      ) }
+      { index?.current && (
+        <div className="fixed bottom-0 left-0 w-full z-50" data-no-bg-context-menu>
+          <Timeline/>
+        </div>
       ) }
 
       <ContextMenu
