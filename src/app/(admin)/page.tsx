@@ -33,7 +33,7 @@ const gridBreakpoints = {lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0}
 const BACKGROUND_CONTEXT_MENU_IGNORE_SELECTOR = ".react-grid-item, [data-no-bg-context-menu]"
 
 export default function Dashboard() {
-  const {containers, lockGrid, index, containerRenderKey, updateContainerSize, parseFiles} = useDashboard()
+  const {containers, index, containerRenderKey, updateContainerSize, parseFiles} = useDashboard()
   const { options: addContainerOptions, addContainer, getOptionLabel, getOptionDescription } = useAddContainer()
   const [ backgroundMenuPosition, setBackgroundMenuPosition ] = useState<ContextMenuPosition | null>(null)
   // Captured at right-click time (pixel offset within the grid), then turned into a
@@ -89,7 +89,8 @@ export default function Dashboard() {
             rowHeight={ 50 }
             autoSize={ true }
             allowOverlap={ false }
-            isDraggable={ !lockGrid }
+            isDraggable={ true }
+            draggableHandle=".drag-handle"
             onDragStop={ layouts => {
               layouts.forEach(layout => updateContainerSize(layout))
             } }
