@@ -11,6 +11,11 @@ export enum ContainerType {
 
 export const DEFAULT_TARGET_MAX_VALUE = 100
 
+// Grid units below this floor stop fitting the container chrome (title, three-dot
+// menu) at the current rowHeight/margin/padding - see page.tsx and BaseView.tsx.
+export const MIN_CONTAINER_W = 1
+export const MIN_CONTAINER_H = 3
+
 export const CONTAINER_TYPE_LABELS: Record<ContainerType, string> = {
   [ContainerType.graph]: 'Graph',
   [ContainerType.table]: 'Table',
@@ -41,16 +46,22 @@ export function getContainerTypeDescription(type: ContainerType) {
   return CONTAINER_TYPE_DESCRIPTIONS[type]
 }
 
+// w and h are in grid units at the cols/rowHeight/margin set in page.tsx. Both
+// axes were doubled there for finer resize steps, so both are doubled again here
+// to keep each type's default at roughly its old physical size - except `state`,
+// which - unlike every other type - renders nothing but a single centered value
+// with no chart, table, or animation, so its default sits right at the
+// MIN_CONTAINER_W/H floor instead of a preserved, oversized default.
 export function DefaultContainerSize(type: ContainerType) {
   switch (type) {
-    case ContainerType.graph: return {x: 0, y: 0, w: 6, h: 5}
-    case ContainerType.state: return {x: 0, y: 0, w: 2, h: 2}
-    case ContainerType.table: return {x: 0, y: 0, w: 8, h: 6}
-    case ContainerType.target: return {x: 0, y: 0, w: 5, h: 4}
-    case ContainerType.logs: return {x: 0, y: 0, w: 19, h: 8}
-    case ContainerType.event: return {x: 0, y: 0, w: 2, h: 3}
-    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 4, h: 4}
-    case ContainerType.action: return {x: 0, y: 0, w: 2, h: 3}
+    case ContainerType.graph: return {x: 0, y: 0, w: 12, h: 10}
+    case ContainerType.state: return {x: 0, y: 0, w: MIN_CONTAINER_W, h: MIN_CONTAINER_H}
+    case ContainerType.table: return {x: 0, y: 0, w: 16, h: 12}
+    case ContainerType.target: return {x: 0, y: 0, w: 10, h: 8}
+    case ContainerType.logs: return {x: 0, y: 0, w: 38, h: 16}
+    case ContainerType.event: return {x: 0, y: 0, w: 4, h: 6}
+    case ContainerType.statefulEvent: return {x: 0, y: 0, w: 8, h: 8}
+    case ContainerType.action: return {x: 0, y: 0, w: 4, h: 6}
   }
 }
 
