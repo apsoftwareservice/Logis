@@ -7,7 +7,7 @@ import TooltipWrapper from '@/components/ui/tooltip/TooltipWrapper'
 import { saveAs } from "file-saver"
 
 export default function ExportPreset() {
-  const {lockGrid, containers} = useDashboard()
+  const {containers} = useDashboard()
 
   const handleExport = async () => {
     try {
@@ -44,8 +44,7 @@ export default function ExportPreset() {
     <TooltipWrapper content={ <div>{ 'Export Preset' }</div> } side={ 'bottom' }>
       <button
         className={ cn(
-          "relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-gray-700 h-9 w-9 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white",
-          lockGrid ? "" : "bg-green-50 dark:bg-gray-800 border-green-800"
+          "relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-gray-700 h-9 w-9 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         ) }
         onClick={ handleExport }
         aria-label="Upload file"
