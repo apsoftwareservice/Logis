@@ -53,7 +53,7 @@ export default function TableView({container}: { container: DashboardContainer<T
 
   return (
     <BaseView
-      body={ <GenericTable data={ item } columns={ inferredColumns } container={ container } followLogs={followLogs}/> }
+      body={ <GenericTable data={ item } columns={ inferredColumns } container={ container } followLogs={followLogs} showDragHandle={ false }/> }
       configuration={
         <>
           { index?.current && (

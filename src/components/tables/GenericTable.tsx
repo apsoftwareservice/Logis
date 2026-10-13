@@ -24,7 +24,7 @@ import {
 } from '@dnd-kit/core'
 import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { ArrowDown, Check, Cog, Plus, Search, X } from 'lucide-react'
+import { ArrowDown, Check, Cog, GripVertical, Plus, Search, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import {
   DropdownMenu,
@@ -689,12 +689,16 @@ export default function GenericTable<TData extends Record<string, any>>({
                                                                           data,
                                                                           columns: columnsProp,
                                                                           container,
-                                                                          followLogs
+                                                                          followLogs,
+                                                                          showDragHandle = true
                                                                         }: {
   data: TData[]
   columns: ColumnDef<TData, any>[]
   container: DashboardContainer<any>
   followLogs: boolean
+  // BaseView (TableView's wrapper) already renders its own drag handle - only
+  // draw ours here for standalone usages (LoggerView) that skip BaseView.
+  showDragHandle?: boolean
 }) {
   const { removeContainer, setFollowLogs } = useDashboard()
   const [activeFilterColumnId, setActiveFilterColumnId] = useState<string | null>(null)
@@ -1037,8 +1041,18 @@ export default function GenericTable<TData extends Record<string, any>>({
       <div className="h-full flex min-h-0">
         <div className="flex flex-col min-h-0 w-full">
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Rows: {data?.length ?? 0}
+            <div className="flex items-center gap-2">
+              {showDragHandle && (
+                <span
+                    title="Drag to move"
+                    className="drag-handle flex shrink-0 cursor-grab items-center text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400"
+                >
+                  <GripVertical width={18} height={18}/>
+                </span>
+              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Rows: {data?.length ?? 0}
+              </div>
             </div>
             <div className="flex items-center gap-1">
               <Popover open={isAddColumnOpen} onOpenChange={setIsAddColumnOpen}>
